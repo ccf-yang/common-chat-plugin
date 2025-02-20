@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Chat Extension 配置</title>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+    
+    button:hover {
+      background-color: #45a049;
+    }
+    
+    button.delete-btn {
+      background-color: #f44336;
+    }
+    
+    button.delete-btn:hover {
+      background-color: #da190b;
+    }
+    
+    .config-list,
+    .function-list {
+      margin: 15px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    
+    .config-item,
+    .function-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .config-item:last-child,
+    .function-item:last-child {
+      border-bottom: none;
+    }
+    
+    h2 {
+      color: #333;
+      margin-bottom: 15px;
+    }
+    
+    .form-container {
+      background-color: #f9f9f9;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h2>API 配置</h2>
+  <div id="apiConfigs" class="config-list"></div>
+  <button id="addApiConfig">新增 API 配置</button>
+
+  <div id="apiForm" style="display: none;" class="form-container">
+    <h3>新增 API 配置</h3>
+    <div class="form-group">
+      <label>名称:</label>
+      <input type="text" id="configName">
+    </div>
+    <div class="form-group">
+      <label>URL:</label>
+      <input type="text" id="apiUrl">
+    </div>
+    <div class="form-group">
+      <label>API Key:</label>
+      <input type="text" id="apiKey">
+    </div>
+    <div class="form-group">
+      <label>模型:</label>
+      <input type="text" id="apiModel">
+    </div>
+    <div class="button-group">
+      <button id="saveApiConfigBtn">保存</button>
+      <button onclick="document.getElementById('apiForm').style.display='none'">取消</button>
+    </div>
+  </div>
+
+  <h2>自定义功能</h2>
+  <div id="customFunctions" class="function-list"></div>
+  <button id="addFunctionBtn">新增功能</button>
+
+  <div id="functionForm" style="display: none;" class="form-container">
+    <h3>新增功能</h3>
+    <div class="form-group">
+      <label>功能名称:</label>
+      <input type="text" id="functionName">
+    </div>
+    <div class="form-group">
+      <label>提示词:</label>
+      <textarea id="functionPrompt" rows="3"></textarea>
+    </div>
+    <div class="button-group">
+      <button id="saveFunctionBtn">保存</button>
+      <button onclick="document.getElementById('functionForm').style.display='none'">取消</button>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html> 
