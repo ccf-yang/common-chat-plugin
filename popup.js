@@ -1,223 +1,124 @@
 // popup.js
 
-// 初始化
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('=== 初始化开始 ===');
-  bindEvents();
-  loadConfigs();
-  console.log('=== 初始化完成 ===');
-  document.getElementById('openOptions').addEventListener('click', () => {
-    chrome.runtime.openOptionsPage();
-  });
+// 等待DOM加载完成
+document.addEventListener('DOMContentLoaded', async () => {
+  console.log('=== 初始化弹出窗口 ===');
+  await loadAndDisplayConfigs();
 });
 
-// 绑定事件
-function bindEvents() {
-  console.log('开始绑定事件');
-  
-  // 获取所有需要的元素
-  const elements = {
-    addApiConfig: document.getElementById('addApiConfig'),
-    saveApiConfigBtn: document.getElementById('saveApiConfigBtn'),
-    addFunctionBtn: document.getElementById('addFunctionBtn'),
-    saveFunctionBtn: document.getElementById('saveFunctionBtn'),
-    apiForm: document.getElementById('apiForm'),
-    functionForm: document.getElementById('functionForm')
-  };
-
-  // 检查并打印元素状态
-  Object.entries(elements).forEach(([name, element]) => {
-    console.log(`${name} 元素:`, element);
-  });
-
-  // API配置相关按钮
-  if (elements.addApiConfig) {
-    elements.addApiConfig.addEventListener('click', () => {
-      console.log('点击新增API配置按钮');
-      elements.apiForm.style.display = 'block';
-    });
-  } else {
-    console.error('未找到 addApiConfig 按钮');
-  }
-
-  if (elements.saveApiConfigBtn) {
-    elements.saveApiConfigBtn.addEventListener('click', saveApiConfig);
-  } else {
-    console.error('未找到 saveApiConfigBtn 按钮');
-  }
-
-  // 功能相关按钮
-  if (elements.addFunctionBtn) {
-    elements.addFunctionBtn.addEventListener('click', () => {
-      console.log('点击新增功能按钮');
-      elements.functionForm.style.display = 'block';
-    });
-  } else {
-    console.error('未找到 addFunctionBtn 按钮');
-  }
-
-  if (elements.saveFunctionBtn) {
-    elements.saveFunctionBtn.addEventListener('click', saveFunction);
-  } else {
-    console.error('未找到 saveFunctionBtn 按钮');
-  }
-
-  console.log('事件绑定完成');
-}
-
-// 加载配置
-async function loadConfigs() {
-  console.log('开始加载配置');
+// 加载并显示配置
+async function loadAndDisplayConfigs() {
   try {
-    // 分别获取API配置和功能配置
-    const { apiConfigs = [] } = await chrome.storage.local.get(['apiConfigs']);
-    const { customFunctions = [] } = await chrome.storage.local.get(['customFunctions']);
-    
-    refreshApiConfigs(apiConfigs);
-    refreshFunctions(customFunctions);
+    const { apiConfigs = [], customFunctions = [] } = await chrome.storage.local.get(['apiConfigs', 'customFunctions']);
+    console.log('加载的API配置:', apiConfigs);
+    console.log('加载的自定义功能:', customFunctions);
+
+    // 显示API配置
+    displayApiConfigs(apiConfigs);
+    // 显示自定义功能
+    displayCustomFunctions(customFunctions);
+
+    // 绑定打开配置页面按钮
+    const openOptionsBtn = document.getElementById('openOptions');
+    if (openOptionsBtn) {
+      openOptionsBtn.onclick = () => chrome.runtime.openOptionsPage();
+    }
   } catch (error) {
     console.error('加载配置失败:', error);
   }
 }
 
-// 保存API配置
-async function saveApiConfig() {
-  console.log('开始保存API配置');
-  try {
-    const newConfig = {
-      id: `api_${Date.now()}`,
-      name: document.getElementById('configName').value.trim(),
-      url: document.getElementById('apiUrl').value.trim(),
-      key: document.getElementById('apiKey').value.trim(),
-      model: document.getElementById('apiModel').value.trim(),
-      enabled: false
-    };
-
-    // 验证输入
-    for (const [key, value] of Object.entries(newConfig)) {
-      if (!value && key !== 'enabled') {
-        throw new Error(`${key} 不能为空`);
-      }
-    }
-
-    // 获取现有API配置并添加新配置
-    const { apiConfigs = [] } = await chrome.storage.local.get(['apiConfigs']);
-    apiConfigs.push(newConfig);
-
-    // 仅更新API配置
-    await chrome.storage.local.set({ apiConfigs });
-    console.log('API配置保存成功');
-
-    document.getElementById('apiForm').style.display = 'none';
-    clearApiForm();
-    refreshApiConfigs(apiConfigs);
-  } catch (error) {
-    console.error('保存API配置失败:', error);
-    alert(`保存失败: ${error.message}`);
-  }
-}
-
-// 保存功能配置
-async function saveFunction() {
-  console.log('开始保存功能配置');
-  try {
-    const newFunction = {
-      id: `func_${Date.now()}`,
-      name: document.getElementById('functionName').value.trim(),
-      prompt: document.getElementById('functionPrompt').value.trim()
-    };
-
-    // 验证输入
-    for (const [key, value] of Object.entries(newFunction)) {
-      if (!value) {
-        throw new Error(`${key} 不能为空`);
-      }
-    }
-
-    // 获取现有功能配置并添加新功能
-    const { customFunctions = [] } = await chrome.storage.local.get(['customFunctions']);
-    customFunctions.push(newFunction);
-
-    // 仅更新功能配置
-    await chrome.storage.local.set({ customFunctions });
-    console.log('功能配置保存成功');
-
-    document.getElementById('functionForm').style.display = 'none';
-    clearFunctionForm();
-    refreshFunctions(customFunctions);
-  } catch (error) {
-    console.error('保存功能配置失败:', error);
-    alert(`保存失败: ${error.message}`);
-  }
-}
-
-// 刷新API配置列表
-function refreshApiConfigs(apiConfigs = []) {
-  console.log('刷新API配置列表');
+// 显示API配置
+function displayApiConfigs(configs) {
   const container = document.getElementById('apiConfigs');
+  if (!container) return;
+
   container.innerHTML = '';
+  if (configs.length === 0) {
+    container.innerHTML = '<div class="list-item">暂无API配置</div>';
+    return;
+  }
 
-  apiConfigs.forEach((config) => {
+  configs.forEach(config => {
     const item = document.createElement('div');
-    item.className = 'config-item';
+    item.className = 'list-item';
     item.innerHTML = `
-      <div>
-        <strong>${config.name}</strong>
-        <input type="checkbox" ${config.enabled ? 'checked' : ''}>
+      <div class="item-info">
+        <div class="item-name">${config.name}</div>
+        <div class="item-detail">模型: ${config.model}</div>
       </div>
-      <button class="delete-btn">删除</button>
+      <div class="item-actions">
+        <button class="toggle-btn ${config.enabled ? '' : 'disabled'}" data-id="${config.id}">
+          ${config.enabled ? '已启用' : '未启用'}
+        </button>
+        <button class="delete-btn" data-id="${config.id}">删除</button>
+      </div>
     `;
-
-    // 绑定启用/禁用事件
-    const checkbox = item.querySelector('input');
-    checkbox.addEventListener('change', () => toggleApiConfig(config.id));
-
-    // 绑定删除事件
-    const deleteBtn = item.querySelector('.delete-btn');
-    deleteBtn.addEventListener('click', () => deleteApiConfig(config.id));
 
     container.appendChild(item);
   });
+
+  // 使用事件委托绑定按钮事件
+  container.onclick = async (e) => {
+    const button = e.target.closest('button');
+    if (!button) return;
+
+    const configId = button.dataset.id;
+    if (button.classList.contains('toggle-btn')) {
+      await toggleApiConfig(configId);
+    } else if (button.classList.contains('delete-btn')) {
+      await deleteApiConfig(configId);
+    }
+  };
 }
 
-// 刷新功能列表
-function refreshFunctions(functions = []) {
-  console.log('刷新功能列表');
+// 显示自定义功能
+function displayCustomFunctions(functions) {
   const container = document.getElementById('customFunctions');
+  if (!container) return;
+
   container.innerHTML = '';
+  if (functions.length === 0) {
+    container.innerHTML = '<div class="list-item">暂无自定义功能</div>';
+    return;
+  }
 
-  functions.forEach((func) => {
+  functions.forEach(func => {
     const item = document.createElement('div');
-    item.className = 'function-item';
+    item.className = 'list-item';
     item.innerHTML = `
-      <div>
-        <strong>${func.name}</strong>
-        <small>${func.prompt}</small>
+      <div class="item-info">
+        <div class="item-name">${func.name}</div>
+        <div class="item-detail">${func.prompt}</div>
       </div>
-      <button class="delete-btn">删除</button>
+      <div class="item-actions">
+        <button class="delete-btn" data-id="${func.id}">删除</button>
+      </div>
     `;
-
-    // 绑定删除事件
-    const deleteBtn = item.querySelector('.delete-btn');
-    deleteBtn.addEventListener('click', () => deleteFunction(func.id));
 
     container.appendChild(item);
   });
+
+  // 使用事件委托绑定删除按钮事件
+  container.onclick = async (e) => {
+    const deleteBtn = e.target.closest('.delete-btn');
+    if (!deleteBtn) return;
+
+    const functionId = deleteBtn.dataset.id;
+    await deleteFunction(functionId);
+  };
 }
 
 // 切换API配置启用状态
 async function toggleApiConfig(configId) {
-  console.log('切换API配置状态:', configId);
   try {
     const { apiConfigs = [] } = await chrome.storage.local.get(['apiConfigs']);
-    
-    const updatedConfigs = apiConfigs.map(item => ({
-      ...item,
-      enabled: item.id === configId ? !item.enabled : false
+    const updatedConfigs = apiConfigs.map(config => ({
+      ...config,
+      enabled: config.id === configId ? !config.enabled : false
     }));
-
     await chrome.storage.local.set({ apiConfigs: updatedConfigs });
-    refreshApiConfigs(updatedConfigs);
+    await loadAndDisplayConfigs();
   } catch (error) {
     console.error('切换API配置状态失败:', error);
   }
@@ -225,12 +126,11 @@ async function toggleApiConfig(configId) {
 
 // 删除API配置
 async function deleteApiConfig(configId) {
-  console.log('删除API配置:', configId);
   try {
     const { apiConfigs = [] } = await chrome.storage.local.get(['apiConfigs']);
-    const updatedConfigs = apiConfigs.filter(item => item.id !== configId);
+    const updatedConfigs = apiConfigs.filter(config => config.id !== configId);
     await chrome.storage.local.set({ apiConfigs: updatedConfigs });
-    refreshApiConfigs(updatedConfigs);
+    await loadAndDisplayConfigs();
   } catch (error) {
     console.error('删除API配置失败:', error);
   }
@@ -238,29 +138,23 @@ async function deleteApiConfig(configId) {
 
 // 删除功能
 async function deleteFunction(functionId) {
-  console.log('删除功能:', functionId);
   try {
+    console.log('删除功能:', functionId);
     const { customFunctions = [] } = await chrome.storage.local.get(['customFunctions']);
-    const updatedFunctions = customFunctions.filter(item => item.id !== functionId);
+    const updatedFunctions = customFunctions.filter(func => func.id !== functionId);
     await chrome.storage.local.set({ customFunctions: updatedFunctions });
-    refreshFunctions(updatedFunctions);
+    
+    // 通知background.js更新上下文菜单
+    chrome.runtime.sendMessage({ 
+      type: 'UPDATE_CONTEXT_MENUS',
+      force: true
+    });
+    
+    // 立即更新显示
+    displayCustomFunctions(updatedFunctions);
   } catch (error) {
     console.error('删除功能失败:', error);
   }
-}
-
-// 清空API配置表单
-function clearApiForm() {
-  document.getElementById('configName').value = '';
-  document.getElementById('apiUrl').value = '';
-  document.getElementById('apiKey').value = '';
-  document.getElementById('apiModel').value = '';
-}
-
-// 清空功能表单
-function clearFunctionForm() {
-  document.getElementById('functionName').value = '';
-  document.getElementById('functionPrompt').value = '';
 }
 
 console.log('popup.js loaded'); // 确保文件加载
@@ -365,8 +259,7 @@ function refreshFunctions() {
     customFunctions.forEach((func, index) => {
       const funcItem = document.createElement('div');
       funcItem.className = 'function-item';
-      funcItem.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+      funcItem.innerHTML = `        <div style="display: flex; justify-content: space-between; align-items: center;">
           <div>
             <div class="function-name">${func.name}</div>
             <div class="function-prompt">${func.prompt}</div>
@@ -381,12 +274,27 @@ function refreshFunctions() {
 }
 
 function deleteFunction(index) {
-  if (confirm('确定要删除此功能吗？')) {
     chrome.storage.local.get(['customFunctions'], ({ customFunctions }) => {
-      customFunctions.splice(index, 1);
+          console.log('删除功能:', index); // index 是功能项的 id
+          console.log('customFunctions:', customFunctions);
+      
+          // 找到该功能项在数组中的索引
+          const functionIndex = customFunctions.findIndex(func => func.id === index);
+      
+          if (functionIndex !== -1) {
+            // 如果找到索引，删除该功能项
+            customFunctions.splice(functionIndex, 1);
+            console.log('customFunctions:', customFunctions);
+      
+            // 保存修改后的数组
+            chrome.storage.local.set({ customFunctions }, () => {
+              console.log('功能已删除，存储已更新');
+            });
+          } else {
+            console.error('未找到要删除的功能项');
+          }
       chrome.storage.local.set({ customFunctions }, refreshFunctions);
     });
-  }
 }
 
 // 自定义功能管理
@@ -405,5 +313,13 @@ document.getElementById('addFunction').addEventListener('click', () => {
         showNotification('功能添加成功');
         location.reload();
     });
+});
+  
+// 监听存储变化
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'local' && (changes.customFunctions || changes.apiConfigs)) {
+    console.log('存储发生变化，重新加载配置');
+    loadAndDisplayConfigs();
+  }
 });
   

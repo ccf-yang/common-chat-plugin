@@ -64,9 +64,11 @@ function bindEvents() {
 async function loadConfigs() {
   console.log('开始加载配置');
   try {
-    // 分别获取API配置和功能配置
     const { apiConfigs = [] } = await chrome.storage.local.get(['apiConfigs']);
     const { customFunctions = [] } = await chrome.storage.local.get(['customFunctions']);
+    
+    console.log('已加载的API配置:', apiConfigs);
+    console.log('已加载的自定义功能:', customFunctions);
     
     refreshApiConfigs(apiConfigs);
     refreshFunctions(customFunctions);
@@ -99,7 +101,7 @@ async function saveApiConfig() {
     const { apiConfigs = [] } = await chrome.storage.local.get(['apiConfigs']);
     apiConfigs.push(newConfig);
 
-    // 仅更新API配置
+    // 保存更新后的配置
     await chrome.storage.local.set({ apiConfigs });
     console.log('API配置保存成功');
 
@@ -133,13 +135,16 @@ async function saveFunction() {
     const { customFunctions = [] } = await chrome.storage.local.get(['customFunctions']);
     customFunctions.push(newFunction);
 
-    // 仅更新功能配置
+    // 保存更新后的配置
     await chrome.storage.local.set({ customFunctions });
-    console.log('功能配置保存成功');
+    console.log('功能配置保存成功:', customFunctions);
 
     document.getElementById('functionForm').style.display = 'none';
     clearFunctionForm();
     refreshFunctions(customFunctions);
+
+    // 通知background.js更新上下文菜单
+    chrome.runtime.sendMessage({ type: 'UPDATE_CONTEXT_MENUS' });
   } catch (error) {
     console.error('保存功能配置失败:', error);
     alert(`保存失败: ${error.message}`);
@@ -147,12 +152,12 @@ async function saveFunction() {
 }
 
 // 刷新API配置列表
-function refreshApiConfigs(apiConfigs = []) {
-  console.log('刷新API配置列表');
+function refreshApiConfigs(configs = []) {
+  console.log('刷新API配置列表:', configs);
   const container = document.getElementById('apiConfigs');
   container.innerHTML = '';
 
-  apiConfigs.forEach((config) => {
+  configs.forEach(config => {
     const item = document.createElement('div');
     item.className = 'config-item';
     item.innerHTML = `
@@ -177,11 +182,11 @@ function refreshApiConfigs(apiConfigs = []) {
 
 // 刷新功能列表
 function refreshFunctions(functions = []) {
-  console.log('刷新功能列表');
+  console.log('刷新功能列表:', functions);
   const container = document.getElementById('customFunctions');
   container.innerHTML = '';
 
-  functions.forEach((func) => {
+  functions.forEach(func => {
     const item = document.createElement('div');
     item.className = 'function-item';
     item.innerHTML = `
@@ -239,6 +244,9 @@ async function deleteFunction(functionId) {
     const updatedFunctions = customFunctions.filter(item => item.id !== functionId);
     await chrome.storage.local.set({ customFunctions: updatedFunctions });
     refreshFunctions(updatedFunctions);
+    
+    // 通知background.js更新上下文菜单
+    chrome.runtime.sendMessage({ type: 'UPDATE_CONTEXT_MENUS' });
   } catch (error) {
     console.error('删除功能失败:', error);
   }
