@@ -15,8 +15,10 @@
 ```
 ├── background.js # 后台脚本，处理右键菜单和消息传递
 ├── content.js # 内容脚本，处理页面交互
-├── popup.js # 弹出窗口脚本，管理配置和功能
-├── popup.html # 弹出窗口HTML
+├── popup.js # 点击插件，弹出的窗口脚本，管理配置和功能
+├── popup.html # 点击插件，弹出的窗口HTML
+├── options.html #点击popup.html，弹出一个新网页用来管理
+├── options.js # options.html里用的js
 ├── manifest.json # 扩展清单文件
 ├── styles.css # 样式表
 └── README.md # 项目文档

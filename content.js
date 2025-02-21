@@ -144,24 +144,6 @@ function setupStopButton() {
   }
 }
 
-// // 显示通知
-// function showNotification(message) {
-//   const notification = document.createElement("div");
-//   notification.style.cssText = `
-//     position: fixed;
-//     bottom: 20px;
-//     left: 50%;
-//     transform: translateX(-50%);
-//     background: rgba(0, 0, 0, 0.8);
-//     color: white;
-//     padding: 10px 20px;
-//     border-radius: 4px;
-//     z-index: 10000;
-//   `;
-//   notification.textContent = message;
-//   document.body.appendChild(notification);
-//   setTimeout(() => notification.remove(), 2000);
-// }
 
 // 处理API请求
 async function processApiRequest(data) {
@@ -254,22 +236,47 @@ function createFloatingWindow() {
     left: 50%;
     transform: translate(-50%, -50%);
     width: 500px;
-    height: 500px; /* 固定高度 */
+    height: 500px;
     background: white;
     border-radius: 8px;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
     z-index: 10000;
     font-family: Arial, sans-serif;
     display: none;
-    overflow: hidden; /* 防止内容溢出 */
+    overflow: hidden;
+    cursor: move; /* 添加移动光标 */
   `;
+
+  // 添加拖动功能
+  let isDragging = false;
+  let offsetX, offsetY;
+
+  div.addEventListener('mousedown', (e) => {
+    if (e.target.classList.contains('title-bar')) {
+      isDragging = true;
+      offsetX = e.clientX - div.offsetLeft;
+      offsetY = e.clientY - div.offsetTop;
+    }
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+      div.style.left = `${e.clientX - offsetX}px`;
+      div.style.top = `${e.clientY - offsetY}px`;
+      div.style.transform = 'none'; // 移除初始的居中transform
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
   
   // 添加样式
   const style = document.createElement('style');
   style.textContent = `
     .title-bar {
       padding: 12px 16px;
-      background: #f5f5f5;
+      background: #ffe8e8;
       border-bottom: 1px solid #eee;
       display: flex;
       justify-content: space-between;
@@ -283,7 +290,7 @@ function createFloatingWindow() {
     }
     .content {
       padding: 16px;
-      height: calc(100% - 120px); /* 减去标题栏和按钮区域高度 */
+      height: calc(85%); /* 减去标题栏和按钮区域高度 */
       overflow-y: auto;
       scroll-behavior: smooth; /* 平滑滚动 */
     }
@@ -307,7 +314,7 @@ function createFloatingWindow() {
     }
     .close-btn {
       background: none;
-      font-size: 20px;
+      font-size: 30px;
       padding: 0 4px;
       color: #666;
     }
