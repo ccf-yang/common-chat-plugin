@@ -3,15 +3,194 @@ console.log("Content script loaded");
 // 创建悬浮窗口
 const floatingWindow = createFloatingWindow();
 let controller = null; // 用于存储AbortController实例
+let cachedSelection = { text: '', range: null }; // 用于存储选中文字内容和区域
+let isMenuInteraction = false; // 新增状态锁变量，控制点击功能按钮后，文本选中不被更新为空
 
 // 监听来自background的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'PROCESS_REQUEST') {
-      processApiRequest(message.data);
-    } else if (message.type === 'SHOW_ERROR') {
-      showError(message.message);
-    }
+  if (message.type === 'PROCESS_REQUEST') {
+    processApiRequest(message.data);
+  } else if (message.type === 'SHOW_ERROR') {
+    showError(message.message);
+  }
+});
+
+// 以下是新增选中文字，弹出功能菜单---------------------------
+// 创建功能图标
+function createPluginIcon() {
+  const container = document.createElement('div');
+  container.id = 'ai-plugin-container';
+  container.style.cssText = `
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 9999;
+    display: none;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  `;
+
+  // 创建图标
+  const icon = document.createElement('div');
+  icon.id = 'ai-plugin-icon';
+  icon.style.cssText = `
+    width: 24px;
+    height: 24px;
+    background: url('${chrome.runtime.getURL('icon48.png')}') center/contain no-repeat;
+    cursor: pointer;
+  `;
+
+  // 创建功能按钮
+  const button = document.createElement('button');
+  button.id = 'ai-plugin-button';
+  button.textContent = '功能';
+  button.style.cssText = `
+    padding: 6px 12px;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+  `;
+  button.addEventListener('mouseenter', () => {
+    button.style.backgroundColor = '#1d4ed8';
   });
+  button.addEventListener('mouseleave', () => {
+    button.style.backgroundColor = '#2563eb';
+  });
+
+  // 创建功能菜单
+  const menu = document.createElement('div');
+  menu.id = 'ai-plugin-menu';
+  menu.style.cssText = `
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    padding: 8px 0;
+    display: none;
+    flex-direction: column;
+    min-width: 120px;
+    z-index: 10000;
+  `;
+
+  // 动态获取功能列表
+  chrome.storage.local.get(['customFunctions'], (result) => {
+    const functions = result.customFunctions || [];
+    
+    functions.forEach(func => {
+      const item = document.createElement('div');
+      item.textContent = func.name;
+      item.style.cssText = `
+        padding: 8px 16px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: all 0.2s;
+        font-size: 13px;
+        color: #374151;
+      `;
+      item.addEventListener('mouseenter', () => {
+        item.style.backgroundColor = '#f3f4f6';
+      });
+      item.addEventListener('mouseleave', () => {
+        item.style.backgroundColor = 'transparent';
+      });
+      item.addEventListener('click', async () => {
+        if (!cachedSelection.text) {
+          showError('请先选择要处理的文本');
+          return;
+        }
+        // 获取API配置和自定义功能
+        const { apiConfigs = [] } = await chrome.storage.local.get(['apiConfigs']);
+        
+        // 查找启用的API配置
+        const activeApi = apiConfigs.find(api => api.enabled);
+        if (!activeApi) {
+          showError('请先启用一个API配置');
+          return;
+        }
+
+        // 直接调用processApiRequest
+        processApiRequest({
+          text: cachedSelection.text,
+          prompt: func.prompt,
+          api: activeApi
+        });
+      });
+      menu.appendChild(item);
+    });
+  });
+
+  // 添加点击事件显示菜单
+  button.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menu.style.display = 'flex';
+    isMenuInteraction = true; // 进入菜单交互状态
+  });
+
+  // 点击其他地方关闭菜单
+  document.addEventListener('click', () => {
+    menu.style.display = 'none';
+    isMenuInteraction = false; // 退出菜单交互状态
+  });
+
+  // 组装元素
+  container.appendChild(icon);
+  container.appendChild(button);
+  container.appendChild(menu);
+  document.body.appendChild(container);
+
+  return container;
+}
+
+// 初始化图标
+const pluginIcon = createPluginIcon();
+
+// 增强版选区缓存方法
+function cacheSelection() {
+  const sel = window.getSelection();
+  if (sel.rangeCount > 0) {
+    cachedSelection = {
+      text: sel.toString().trim(),
+      range: sel.getRangeAt(0).cloneRange() // 克隆选区对象
+    };
+    
+  }
+}
+
+// 监听文本选择
+document.addEventListener('mouseup', (e) => {
+  if (isMenuInteraction) return; // 关键：菜单操作期间禁止更新缓存
+  cacheSelection(); // 立即保存选区
+  // console.log(cachedSelection);
+  if (cachedSelection.text) {
+    const rect = cachedSelection.range.getBoundingClientRect();
+    // 定位容器
+    const container = document.getElementById('ai-plugin-container');
+    if (container) {
+      container.style.left = `${rect.right + 5}px`;
+      container.style.top = `${rect.top + window.scrollY}px`;
+      container.style.display = 'flex';
+    }
+  } else {
+    const container = document.getElementById('ai-plugin-container');
+    if (container) {
+      container.style.display = 'none';
+    }
+  }
+});
+
+//以上是新增选中文字弹出功能-----------------------
+
 
 // 显示加载中
 function showLoading() {
@@ -145,10 +324,12 @@ function setupStopButton() {
 }
 
 
+
 // 处理API请求
 async function processApiRequest(data) {
   try {
     const { text, prompt, api } = data;
+    console.log(text, prompt, api);
     
     // 显示加载状态
     showLoading(true);
