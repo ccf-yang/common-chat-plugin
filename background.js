@@ -25,7 +25,7 @@ chrome.storage.onChanged.addListener((changes) => {
   }
 });
 
-// 监听消息
+// 监听消息，这里只是示例，实际并没有使用，配合popup.js里面的chrome.runtime.sendMessage({ type: 'UPDATE_CONTEXT_MENUS' });
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   if (message.type === 'UPDATE_CONTEXT_MENUS') {
     console.log('收到更新菜单请求');
@@ -33,11 +33,17 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   }
 });
 
-// 刷新上下文菜单
+// 刷新右键的上下文菜单
 async function refreshContextMenus() {
   try {
     // 先移除所有现有菜单
-    await chrome.contextMenus.removeAll();
+    await chrome.contextMenus.removeAll()
+    .then(() => {
+        console.log('所有菜单项已删除');
+    })
+    .catch((error) => {
+        console.error('删除菜单项失败:', error);
+    });
     
     // 创建父菜单
     await chrome.contextMenus.create({

@@ -1,337 +1,335 @@
 console.log("Content script loaded");
 
-let floatingWindow = null;
+// 创建悬浮窗口
+const floatingWindow = createFloatingWindow();
+let controller = null; // 用于存储AbortController实例
 
 // 监听来自background的消息
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === 'PROCESS_REQUEST') {
-    handleRequest(request.data);
-  } else if (request.type === 'SHOW_ERROR') {
-    showError(request.message);
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'PROCESS_REQUEST') {
+      processApiRequest(message.data);
+    } else if (message.type === 'SHOW_ERROR') {
+      showError(message.message);
+    }
+  });
+
+// 显示加载中
+function showLoading() {
+  floatingWindow.innerHTML = `
+    <div class="title-bar">
+      <div class="title">处理中...</div>
+      <button class="close-btn">&times;</button>
+    </div>
+    <div class="button-container">
+      <button class="stop-btn">停止</button>
+    </div>
+  `;
+  floatingWindow.style.display = 'block';
+  setupCloseButton();
+  setupStopButton();
+}
+
+// 显示错误
+function showError(message) {
+  floatingWindow.innerHTML = `
+    <div class="title-bar">
+      <div class="title">错误</div>
+      <button class="close-btn">&times;</button>
+    </div>
+    <div class="content">${message}</div>
+    <div class="button-container">
+      <button class="copy-btn">复制</button>
+    </div>
+  `;
+  floatingWindow.style.display = 'block';
+  setupCloseButton();
+  setupCopyButton(message);
+}
+
+// 显示结果
+function showResult(content, isComplete) {
+  const safeContent = content
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+  
+  // 自动滚动到底部
+  const contentDiv = floatingWindow.querySelector('.content');
+  if (contentDiv) {
+    // 保存当前滚动位置
+    const prevScrollTop = contentDiv.scrollTop;
+    const prevScrollHeight = contentDiv.scrollHeight;
+    // 更新内容
+    contentDiv.innerHTML = safeContent;
+    // 恢复滚动位置
+    if (prevScrollTop + contentDiv.clientHeight < prevScrollHeight) {
+      // 如果用户之前没有滚动到底部，保持原位置
+      contentDiv.scrollTop = prevScrollTop + (contentDiv.scrollHeight - prevScrollHeight);
+    } else {
+      // 如果用户之前滚动到底部，自动滚动到最新内容
+      contentDiv.scrollTop = contentDiv.scrollHeight;
+    }
+    if (isComplete) {
+        floatingWindow.innerHTML = `
+        <div class="title-bar">
+          <div class="title">AI 响应</div>
+          <div class="button-group">
+            <button class="copy-btn">复制</button>
+            <button class="close-btn">&times;</button>
+          </div>
+        </div>
+        <div class="content">${safeContent}</div>
+      `;
+    }
+  }else{
+    floatingWindow.innerHTML = `
+    <div class="title-bar">
+      <div class="title">AI 响应</div>
+      <div class="button-group">
+        <button class="copy-btn">复制</button>
+        <button class="stop-btn">停止</button>
+        <button class="close-btn">&times;</button>
+      </div>
+    </div>
+    <div class="content">${safeContent}</div>
+  `;
   }
-});
+  
+  floatingWindow.style.display = 'block';
+  setupCloseButton();
+  setupCopyButton(content);
+  if (!isComplete) {
+    setupStopButton();
+  }
+}
+
+// 设置关闭按钮
+function setupCloseButton() {
+  const closeBtn = floatingWindow.querySelector('.close-btn');
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      floatingWindow.style.display = 'none';
+    };
+  }
+}
+
+// 设置复制按钮
+function setupCopyButton(content) {
+  const copyBtn = floatingWindow.querySelector('.copy-btn');
+  if (copyBtn) {
+    copyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(content);
+        copyBtn.textContent = '已复制';
+        setTimeout(() => {
+          copyBtn.textContent = '复制';
+        }, 1500);
+      } catch (error) {
+        showError('复制失败');
+      }
+    };
+  }
+}
+
+// 设置停止按钮
+function setupStopButton() {
+  const stopBtn = floatingWindow.querySelector('.stop-btn');
+  if (stopBtn) {
+    stopBtn.onclick = () => {
+      if (controller) {
+        controller.abort();
+      }
+    };
+  }
+}
+
+// // 显示通知
+// function showNotification(message) {
+//   const notification = document.createElement("div");
+//   notification.style.cssText = `
+//     position: fixed;
+//     bottom: 20px;
+//     left: 50%;
+//     transform: translateX(-50%);
+//     background: rgba(0, 0, 0, 0.8);
+//     color: white;
+//     padding: 10px 20px;
+//     border-radius: 4px;
+//     z-index: 10000;
+//   `;
+//   notification.textContent = message;
+//   document.body.appendChild(notification);
+//   setTimeout(() => notification.remove(), 2000);
+// }
 
 // 处理API请求
-async function handleRequest({ text, prompt, api }) {
+async function processApiRequest(data) {
   try {
-    showLoading();
+    const { text, prompt, api } = data;
     
+    // 显示加载状态
+    showLoading(true);
+
+    // 创建AbortController
+    controller = new AbortController();
+
+    // 创建请求参数（强制使用流式）
+    const requestBody = {
+      model: api.model,
+      messages: [
+        {
+          role: 'system',
+          content: prompt
+        },
+        {
+          role: 'user',
+          content: text
+        }
+      ],
+      stream: true  // 强制启用流式响应
+    };
+
+    // 发送请求
     const response = await fetch(api.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${api.key}`
       },
-      body: JSON.stringify({
-        model: api.model,
-        messages: [
-          { role: "system", content: prompt },
-          { role: "user", content: text }
-        ]
-      })
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     });
 
-    const data = await response.json();
-    if (data.error) {
-      throw new Error(data.error.message);
+    // 处理流式响应
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let result = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      // 解码并处理数据
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n').filter(line => line.trim() !== '');
+      
+      lines.forEach(line => {
+        if (line.startsWith('data: ')) {
+          const jsonStr = line.slice(6);
+          if (jsonStr === '[DONE]') return;
+          
+          try {
+            const data = JSON.parse(jsonStr);
+            const content = data.choices[0]?.delta?.content || '';
+            result += content;
+            
+            // 更新悬浮窗口内容
+            showResult(result, false);
+          } catch (error) {
+            console.error('解析JSON失败:', error);
+          }
+        }
+      });
     }
 
-    const result = data.choices[0].message.content;
-    showResult(result);
+    // 处理完成
+    showResult(result, true);
   } catch (error) {
-    showError(error.message);
+    if (error.name !== 'AbortError') {
+      showError(error.message);
+    }
+  } finally {
+    controller = null;
   }
 }
 
-// 显示加载中
-function showLoading() {
-  showFloatingWindow('处理中...', 'loading');
-}
-
-// 显示错误
-function showError(message) {
-  showFloatingWindow(`错误: ${message}`, 'error');
-}
-
-// 显示结果
-function showResult(content) {
-  showFloatingWindow(content, 'success');
-}
-
-// 显示浮动窗口
-function showFloatingWindow(content, type = 'default') {
-  // 移除现有窗口
-  if (floatingWindow) {
-    floatingWindow.remove();
-  }
-
-  // 创建新窗口
-  floatingWindow = document.createElement('div');
-  floatingWindow.style.cssText = `
+// 创建悬浮窗口
+function createFloatingWindow() {
+  const div = document.createElement('div');
+  div.id = 'ai-chat-floating-window';
+  div.style.cssText = `
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     width: 500px;
+    height: 500px; /* 固定高度 */
     background: white;
     border-radius: 8px;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
     z-index: 10000;
     font-family: Arial, sans-serif;
+    display: none;
+    overflow: hidden; /* 防止内容溢出 */
   `;
-
-  // 创建标题栏
-  const titleBar = document.createElement('div');
-  titleBar.style.cssText = `
-    padding: 12px 16px;
-    background: #f5f5f5;
-    border-radius: 8px 8px 0 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #eee;
-  `;
-
-  const title = document.createElement('div');
-  title.textContent = type === 'loading' ? '处理中' : 
-                     type === 'error' ? '错误' : 'AI 响应';
-  title.style.fontWeight = 'bold';
-
-  const closeButton = document.createElement('button');
-  closeButton.innerHTML = '&times;';
-  closeButton.style.cssText = `
-    background: none;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    padding: 0 4px;
-    color: #666;
-  `;
-  closeButton.onclick = () => floatingWindow.remove();
-
-  titleBar.appendChild(title);
-  titleBar.appendChild(closeButton);
-
-  // 创建内容容器
-  const contentContainer = document.createElement('div');
-  contentContainer.style.cssText = `
-    padding: 16px;
-    max-height: 60vh;
-    overflow-y: auto;
-    line-height: 1.5;
-    color: #333;
-  `;
-  contentContainer.textContent = content;
-
-  // 创建按钮容器
-  const buttonContainer = document.createElement('div');
-  buttonContainer.style.cssText = `
-    padding: 12px 16px;
-    background: #f5f5f5;
-    border-top: 1px solid #eee;
-    border-radius: 0 0 8px 8px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-  `;
-
-  // 添加复制按钮
-  if (type === 'success') {
-    const copyButton = document.createElement('button');
-    copyButton.textContent = '复制';
-    copyButton.style.cssText = `
+  
+  // 添加样式
+  const style = document.createElement('style');
+  style.textContent = `
+    .title-bar {
+      padding: 12px 16px;
+      background: #f5f5f5;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .title {
+      font-weight: bold;
+    }
+    .content {
+      padding: 16px;
+      height: calc(100% - 120px); /* 减去标题栏和按钮区域高度 */
+      overflow-y: auto;
+      scroll-behavior: smooth; /* 平滑滚动 */
+    }
+    .button-container {
+      padding: 12px 16px;
+      background: #f5f5f5;
+      border-top: 1px solid #eee;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      position: sticky;
+      bottom: 0;
+      z-index: 1;
+    }
+    button {
       padding: 6px 12px;
-      background: #4CAF50;
-      color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
       font-size: 14px;
-    `;
-    copyButton.onmouseover = () => {
-      copyButton.style.background = '#45a049';
-    };
-    copyButton.onmouseout = () => {
-      copyButton.style.background = '#4CAF50';
-    };
-    copyButton.onclick = () => {
-      navigator.clipboard.writeText(content)
-        .then(() => {
-          copyButton.textContent = '已复制';
-          setTimeout(() => {
-            copyButton.textContent = '复制';
-          }, 1500);
-        })
-        .catch(() => alert('复制失败'));
-    };
-    buttonContainer.appendChild(copyButton);
-  }
-
-  // 组装窗口
-  floatingWindow.appendChild(titleBar);
-  floatingWindow.appendChild(contentContainer);
-  if (type === 'success') {
-    floatingWindow.appendChild(buttonContainer);
-  }
-
-  // 添加到页面
-  document.body.appendChild(floatingWindow);
-
-  // 添加拖动功能
-  let isDragging = false;
-  let currentX;
-  let currentY;
-  let initialX;
-  let initialY;
-
-  titleBar.style.cursor = 'move';
-  titleBar.addEventListener('mousedown', dragStart);
-
-  function dragStart(e) {
-    initialX = e.clientX - floatingWindow.offsetLeft;
-    initialY = e.clientY - floatingWindow.offsetTop;
-    
-    if (e.target === titleBar) {
-      isDragging = true;
     }
-  }
-
-  document.addEventListener('mousemove', drag);
-  document.addEventListener('mouseup', dragEnd);
-
-  function drag(e) {
-    if (isDragging) {
-      e.preventDefault();
-      currentX = e.clientX - initialX;
-      currentY = e.clientY - initialY;
-      
-      floatingWindow.style.left = currentX + 'px';
-      floatingWindow.style.top = currentY + 'px';
-      floatingWindow.style.transform = 'none';
+    .close-btn {
+      background: none;
+      font-size: 20px;
+      padding: 0 4px;
+      color: #666;
     }
-  }
-
-  function dragEnd(e) {
-    initialX = currentX;
-    initialY = currentY;
-    isDragging = false;
-  }
-}
-
-function getSelectedText() {
-  return window.getSelection().toString().trim();
-}
-
-// 复制到剪贴板
-async function copyToClipboard(text) {
-  try {
-    await navigator.clipboard.writeText(text);
-    showNotification('复制成功');
-  } catch (error) {
-    showNotification('复制失败');
-  }
-}
-
-// 显示通知
-function showNotification(message) {
-  const notification = document.createElement("div");
-  notification.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 10px 20px;
-    border-radius: 4px;
-    z-index: 10000;
+    .copy-btn {
+      background: #4CAF50;
+      color: white;
+    }
+    .stop-btn {
+      background: #f44336;
+      color: white;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    .button-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
   `;
-  notification.textContent = message;
-  document.body.appendChild(notification);
-  setTimeout(() => notification.remove(), 2000);
+  document.head.appendChild(style);
+  
+  document.body.appendChild(div);
+  return div;
 }
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log("Message received in content script:", message);
-
-    if (message.action === "refactorText") {
-        const activeElement = document.activeElement;
-
-        if (!activeElement) {
-            console.log("No active element");
-            sendResponse({ error: "No active element" });
-            return;
-        }
-
-        let selectedText = null;
-        if (activeElement.isContentEditable) {
-            selectedText = window.getSelection().toString() || activeElement.innerText;
-        } else if (activeElement.value) {
-            selectedText = activeElement.value.substring(activeElement.selectionStart, activeElement.selectionEnd) || activeElement.value;
-        }
-
-        if (!selectedText) {
-            console.log("No text input element focused or no text selected");
-            sendResponse({ error: "No text input element focused or no text selected" });
-            return;
-        }
-
-        console.log("Selected text:", selectedText);
-
-        const url = 'https://api.ppinfra.com/v3/openai/chat/completions';
-        console.log("Fetching URL:", url);
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${message.apiKey}`
-            },
-            body: JSON.stringify({
-                model: "deepseek/deepseek-v3",
-                messages: [
-                    {role: "system", content: "You are a professional prompt engineer. Your task is to optimize the user's prompt by making it clearer, more concise, and more effective. Only output the improved prompt without adding any commentary or labels. If the original prompt is already optimized, return it unchanged."},
-                    {role: "user", content: `${selectedText}`}
-                ],
-                max_tokens: 512,
-                temperature: 0.9
-            })
-        })
-        
-        .then(response => {
-            console.log("Fetch response:", response);
-            if (!response.ok) {
-                throw new Error(response.statusText);
-            }
-            return response.json();
-        })
-        .then(result => {
-            console.log("Result:", result);
-            if (result.choices && result.choices[0] && result.choices[0].message) {
-                let rephrased = result.choices[0].message.content.trim();
-                
-                // Remove surrounding quotes if present
-                if ((rephrased.startsWith('"') && rephrased.endsWith('"')) || (rephrased.startsWith("'") && rephrased.endsWith("'"))) {
-                    rephrased = rephrased.slice(1, -1);
-                }
-                
-                if (activeElement.isContentEditable) {
-                    activeElement.innerText = rephrased;
-                } else {
-                    activeElement.value = rephrased;
-                }
-                copyToClipboard(rephrased);
-                sendResponse({ success: true, rephrased: rephrased });
-            } else {
-                sendResponse({ success: false, error: "Failed to rephrase the text" });
-            }
-        })
-        
-        .catch(error => {
-            console.error("Error during fetch:", error);
-            sendResponse({ success: false, error: error.message });
-        });
-
-        return true; // keep the messaging channel open for sendResponse
-    }
-});

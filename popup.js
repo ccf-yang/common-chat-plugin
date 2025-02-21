@@ -21,7 +21,7 @@ async function loadAndDisplayConfigs() {
     // 绑定打开配置页面按钮
     const openOptionsBtn = document.getElementById('openOptions');
     if (openOptionsBtn) {
-      openOptionsBtn.onclick = () => chrome.runtime.openOptionsPage();
+      openOptionsBtn.onclick = () => chrome.runtime.openOptionsPage();  // 打开配置页面,内置函数，默认打开options.html
     }
   } catch (error) {
     console.error('加载配置失败:', error);
@@ -60,7 +60,7 @@ function displayApiConfigs(configs) {
 
   // 使用事件委托绑定按钮事件
   container.onclick = async (e) => {
-    const button = e.target.closest('button');
+    const button = e.target.closest('button'); 
     if (!button) return;
 
     const configId = button.dataset.id;
@@ -136,146 +136,11 @@ async function deleteApiConfig(configId) {
   }
 }
 
-// 删除功能
-async function deleteFunction(functionId) {
-  try {
-    console.log('删除功能:', functionId);
-    const { customFunctions = [] } = await chrome.storage.local.get(['customFunctions']);
-    const updatedFunctions = customFunctions.filter(func => func.id !== functionId);
-    await chrome.storage.local.set({ customFunctions: updatedFunctions });
-    
-    // 通知background.js更新上下文菜单
-    chrome.runtime.sendMessage({ 
-      type: 'UPDATE_CONTEXT_MENUS',
-      force: true
-    });
-    
-    // 立即更新显示
-    displayCustomFunctions(updatedFunctions);
-  } catch (error) {
-    console.error('删除功能失败:', error);
-  }
-}
-
 console.log('popup.js loaded'); // 确保文件加载
-
-document.getElementById('addApiConfig').addEventListener('click', () => {
-    document.getElementById('apiForm').style.display = 'block';
-    document.getElementById('addApiConfig').style.display = 'none';
-});
-
-function validateApiConfig(name, url, key) {
-    if (!name) {
-        alert('配置名称不能为空');
-        return false;
-    }
-    if (!url.startsWith('https://')) {
-        alert('请输入有效的HTTPS地址');
-        return false;
-    }
-    if (!key) {
-        alert('API密钥不能为空');
-        return false;
-    }
-    return true;
-}
-
-function cancelApiConfig() {
-    document.getElementById('apiForm').style.display = 'none';
-}
-
-function clearForm() {
-    document.getElementById('apiForm').style.display = 'none';
-    document.getElementById('addApiConfig').style.display = 'block';
-    document.getElementById('configName').value = '';
-    document.getElementById('apiUrl').value = '';
-    document.getElementById('apiKey').value = '';
-    document.getElementById('apiModel').value = '';
-}
-  
-// 修改后的refreshConfigs函数
-function refreshConfigs() {
-    chrome.storage.local.get(['apiConfigs'], ({ apiConfigs = [] }) => {
-        const list = document.getElementById('configList');
-        list.innerHTML = apiConfigs.length === 0 ? 
-            '<div class="empty-tip">暂无配置，点击上方按钮添加</div>' : '';
-
-        apiConfigs.forEach((config, index) => {
-            const configItem = document.createElement('div');
-            configItem.className = 'api-config';
-            configItem.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <h4>${config.name}</h4>
-                        <div style="font-size: 0.9em; color: #666;">
-                            ${config.model} | ${shortenUrl(config.url)}
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <button class="delete-btn" data-index="${index}">删除</button>
-                        <div class="toggle-btn" data-index="${index}">
-                            ${config.enabled ? '✅ 已启用' : '❌ 未启用'}
-                        </div>
-                    </div>
-                </div>
-            `;
-            configItem.querySelector('.toggle-btn').onclick = () => toggleConfig(index);
-            configItem.querySelector('.delete-btn').onclick = () => deleteConfig(index);
-            list.appendChild(configItem);
-        });
-    });
-}
-
-function shortenUrl(url) {
-    return url.replace(/^https?:\/\/(www\.)?/,'').slice(0, 20) + '...';
-}
-
-function toggleConfig(index) {
-chrome.storage.local.get(['apiConfigs'], ({ apiConfigs }) => {
-    apiConfigs = apiConfigs.map((c, i) => ({
-    ...c,
-    enabled: i === index ? !c.enabled : false
-    }));
-    chrome.storage.local.set({ apiConfigs }, refreshConfigs);
-});
-}
-
-function deleteConfig(index) {
-    if (confirm('确定要删除此配置吗？')) {
-        chrome.storage.local.get(['apiConfigs'], ({ apiConfigs }) => {
-            apiConfigs.splice(index, 1);
-            chrome.storage.local.set({ apiConfigs }, refreshConfigs);
-        });
-    }
-}
-
-// 新增功能管理
-function refreshFunctions() {
-  chrome.storage.local.get(['customFunctions'], ({ customFunctions = [] }) => {
-    const list = document.getElementById('functionList');
-    list.innerHTML = customFunctions.length === 0 ? 
-      '<div class="empty-tip">暂无功能，点击下方按钮添加</div>' : '';
-
-    customFunctions.forEach((func, index) => {
-      const funcItem = document.createElement('div');
-      funcItem.className = 'function-item';
-      funcItem.innerHTML = `        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <div class="function-name">${func.name}</div>
-            <div class="function-prompt">${func.prompt}</div>
-          </div>
-          <div class="delete-function" data-index="${index}">删除</div>
-        </div>
-      `;
-      funcItem.querySelector('.delete-function').onclick = () => deleteFunction(index);
-      list.appendChild(funcItem);
-    });
-  });
-}
 
 function deleteFunction(index) {
     chrome.storage.local.get(['customFunctions'], ({ customFunctions }) => {
-          console.log('删除功能:', index); // index 是功能项的 id
+          console.log('删除功能2:', index); // index 是功能项的 id
           console.log('customFunctions:', customFunctions);
       
           // 找到该功能项在数组中的索引
@@ -293,27 +158,14 @@ function deleteFunction(index) {
           } else {
             console.error('未找到要删除的功能项');
           }
-      chrome.storage.local.set({ customFunctions }, refreshFunctions);
+    //   // 通知background.js更新上下文菜单 , 因为下面用了检测到存储发生变化就通知的功能，所以这里不需要用
+    //   chrome.runtime.sendMessage({ 
+    //     type: 'UPDATE_CONTEXT_MENUS',
+    //     force: true
+    //   });
+    //   displayCustomFunctions(customFunctions);
     });
 }
-
-// 自定义功能管理
-document.getElementById('addFunction').addEventListener('click', () => {
-    const name = prompt('功能名称:');
-    if (!name) return;
-
-    const promptText = prompt('提示词模板:');
-    if (!promptText) return;
-
-    chrome.runtime.sendMessage({
-        action: "addNewFunction",
-        name,
-        prompt: promptText
-    }, () => {
-        showNotification('功能添加成功');
-        location.reload();
-    });
-});
   
 // 监听存储变化
 chrome.storage.onChanged.addListener((changes, namespace) => {
