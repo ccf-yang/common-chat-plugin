@@ -21,26 +21,41 @@ function createPluginIcon() {
   const container = document.createElement('div');
   container.id = 'ai-plugin-container';
   container.style.cssText = `
-    position: absolute;
+    position: fixed;
     display: flex;
     align-items: center;
-    gap: 12px;
-    z-index: 9999;
+    gap: 8px;
+    z-index: 2147483647;
     display: none;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 8px;
-    padding: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 4px;
+    background: rgba(234, 236, 245, 0.95);
+    border-radius: 16px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   `;
 
   // 创建图标
   const icon = document.createElement('div');
   icon.id = 'ai-plugin-icon';
   icon.style.cssText = `
-    width: 24px;
-    height: 24px;
-    background: url('${chrome.runtime.getURL('icon48.png')}') center/contain no-repeat;
+    width: 28px;
+    height: 28px;
+    background: url('${chrome.runtime.getURL('icon48.png')}') center/16px no-repeat;
     cursor: pointer;
+    border-radius: 50%;
+    background-color: #7F95E1;
+    background-image: 
+      url('${chrome.runtime.getURL('icon48.png')}'),
+      linear-gradient(135deg, #7F95E1 0%, #B8B3E9 100%);
+    border: 0.5px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 2px 6px rgba(127, 149, 225, 0.2);
+    transition: transform 0.2s ease;
+    z-index: 2147483647;
+    &:hover {
+      transform: scale(1.05);
+    }
   `;
 
   // 创建功能按钮
@@ -48,22 +63,28 @@ function createPluginIcon() {
   button.id = 'ai-plugin-button';
   button.textContent = '功能';
   button.style.cssText = `
-    padding: 6px 12px;
-    background-color: #2563eb;
+    width: 52px;
+    height: 28px;
+    background: linear-gradient(135deg, #7F95E1 0%, #B8B3E9 100%);
     color: white;
-    border: none;
-    border-radius: 6px;
+    border: 0.5px solid rgba(255, 255, 255, 0.3);
+    border-radius: 14px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
-    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 2px 6px rgba(127, 149, 225, 0.2);
+    transition: transform 0.2s ease;
+    white-space: nowrap;
+    z-index: 2147483647;
+    &:hover {
+      transform: scale(1.05);
+    }
   `;
-  button.addEventListener('mouseenter', () => {
-    button.style.backgroundColor = '#1d4ed8';
-  });
-  button.addEventListener('mouseleave', () => {
-    button.style.backgroundColor = '#2563eb';
-  });
 
   // 创建功能菜单
   const menu = document.createElement('div');
@@ -72,15 +93,17 @@ function createPluginIcon() {
     position: absolute;
     top: calc(100% + 8px);
     left: 0;
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    background: rgba(234, 236, 245, 0.95);
+    border: 0.5px solid rgba(127, 149, 225, 0.2);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(127, 149, 225, 0.15);
     padding: 8px 0;
     display: none;
     flex-direction: column;
     min-width: 120px;
-    z-index: 10000;
+    z-index: 2147483647;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   `;
 
   // 动态获取功能列表
@@ -171,7 +194,7 @@ function cacheSelection() {
 document.addEventListener('mouseup', (e) => {
   if (isMenuInteraction) return; // 关键：菜单操作期间禁止更新缓存
   cacheSelection(); // 立即保存选区
-  // console.log(cachedSelection);
+  console.log(cachedSelection);
   if (cachedSelection.text) {
     const rect = cachedSelection.range.getBoundingClientRect();
     // 定位容器
@@ -418,14 +441,16 @@ function createFloatingWindow() {
     transform: translate(-50%, -50%);
     width: 500px;
     height: 500px;
-    background: white;
-    border-radius: 8px;
+    background: rgba(244, 245, 250, 0.98);
+    border-radius: 12px;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
-    z-index: 10000;
+    z-index: 2147483646;
     font-family: Arial, sans-serif;
     display: none;
     overflow: hidden;
-    cursor: move; /* 添加移动光标 */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 0.5px solid rgba(127, 149, 225, 0.2);
   `;
 
   // 添加拖动功能
@@ -457,8 +482,8 @@ function createFloatingWindow() {
   style.textContent = `
     .title-bar {
       padding: 12px 16px;
-      background: #ffe8e8;
-      border-bottom: 1px solid #eee;
+      background: rgba(234, 236, 245, 0.95);
+      border-bottom: 0.5px solid rgba(127, 149, 225, 0.2);
       display: flex;
       justify-content: space-between;
       align-items: center;
