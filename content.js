@@ -4,7 +4,6 @@ console.log("Content script loaded");
 const floatingWindow = createFloatingWindow();
 let controller = null; // 用于存储AbortController实例
 let cachedSelection = { text: '', range: null }; // 用于存储选中文字内容和区域
-let isMenuInteraction = false; // 新增状态锁变量，控制点击功能按钮后，文本选中不被更新为空
 
 // 监听来自background的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -127,7 +126,7 @@ function createPluginIcon() {
       item.addEventListener('mouseleave', () => {
         item.style.backgroundColor = 'transparent';
       });
-      item.addEventListener('click', async () => {
+      item.addEventListener('click', async (e) => {
         if (!cachedSelection.text) {
           showError('请先选择要处理的文本');
           return;
@@ -157,13 +156,16 @@ function createPluginIcon() {
   button.addEventListener('click', (e) => {
     e.stopPropagation();
     menu.style.display = 'flex';
-    isMenuInteraction = true; // 进入菜单交互状态
   });
 
   // 点击其他地方关闭菜单
-  document.addEventListener('click', () => {
+  document.addEventListener('click', (e) => {
     menu.style.display = 'none';
-    isMenuInteraction = false; // 退出菜单交互状态
+    console.log('点击其他地方关闭菜单选项');
+    if (menu.style.display === 'none' && container.style.display === 'flex' && !container.contains(e.target) && window.getSelection().toString().trim() === '') {
+      console.log('点击关闭提示窗口');
+      container.style.display = 'none';
+    }
   });
 
   // 组装元素
@@ -181,7 +183,8 @@ const pluginIcon = createPluginIcon();
 // 增强版选区缓存方法
 function cacheSelection() {
   const sel = window.getSelection();
-  if (sel.rangeCount > 0) {
+  // 只有新内容才能更新老内容，空不能更新原先选中的内容，这里重要，否则飞书文档逻辑处理不了
+  if (sel.rangeCount > 0 && sel.toString().trim() !== '') {
     cachedSelection = {
       text: sel.toString().trim(),
       range: sel.getRangeAt(0).cloneRange() // 克隆选区对象
@@ -192,21 +195,44 @@ function cacheSelection() {
 
 // 监听文本选择
 document.addEventListener('mouseup', (e) => {
-  if (isMenuInteraction) return; // 关键：菜单操作期间禁止更新缓存
-  cacheSelection(); // 立即保存选区
-  console.log(cachedSelection);
-  if (cachedSelection.text) {
+  const container = document.getElementById('ai-plugin-container');
+  const menu = document.getElementById('ai-plugin-menu');
+  
+  // 如果点击在container内部，不做处理
+  if (container && container.contains(e.target)) {
+    return;
+  }
+  
+  // 获取新的选区
+  const selection = window.getSelection();
+  const selectedText = selection.toString().trim();
+  
+  if (selectedText) {
+    // 有新选区时，更新缓存并显示container
+    cachedSelection = {
+      text: selectedText,
+      range: selection.getRangeAt(0).cloneRange()
+    };
+    
     const rect = cachedSelection.range.getBoundingClientRect();
-    // 定位容器
-    const container = document.getElementById('ai-plugin-container');
     if (container) {
-      container.style.left = `${rect.right + 5}px`;
-      container.style.top = `${rect.top + window.scrollY}px`;
+      // 使用 pageX/pageY 或 clientX/clientY + scroll 来计算位置
+      const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+      const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+      
+      container.style.position = 'absolute'; // 改为absolute定位
+      container.style.left = `${rect.right + scrollX + 5}px`;
+      container.style.top = `${rect.top + scrollY}px`;
       container.style.display = 'flex';
+      
+      // 确保menu是隐藏的
+      if (menu) {
+        menu.style.display = 'none';
+      }
     }
   } else {
-    const container = document.getElementById('ai-plugin-container');
-    if (container) {
+    // 没有选区时，检查menu是否显示
+    if (menu && menu.style.display === 'none' && container) {
       container.style.display = 'none';
     }
   }
