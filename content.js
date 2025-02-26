@@ -276,6 +276,7 @@ function showError(message) {
 
 // 显示结果
 function showResult(content, isComplete) {
+  let overContent = '';
   const safeContent = content
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -299,6 +300,9 @@ function showResult(content, isComplete) {
       contentDiv.scrollTop = contentDiv.scrollHeight;
     }
     if (isComplete) {
+        // 如果是完整内容，直接解析
+        // overContent = marked.parse(safeContent);
+        // console.log(overContent);
         floatingWindow.innerHTML = `
         <div class="title-bar">
           <div class="title">AI 响应</div>
@@ -507,7 +511,7 @@ function createFloatingWindow() {
   const style = document.createElement('style');
   style.textContent = `
     .title-bar {
-      padding: 12px 16px;
+      padding: 5px 17px;
       background: rgba(234, 236, 245, 0.95);
       border-bottom: 0.5px solid rgba(127, 149, 225, 0.2);
       display: flex;
@@ -547,16 +551,20 @@ function createFloatingWindow() {
     .close-btn {
       background: none;
       font-size: 30px;
-      padding: 0 4px;
+      padding: 0 8px;
       color: #666;
     }
     .copy-btn {
       background: #4CAF50;
       color: white;
+      padding: 4px 10px;
+      border-radius: 43px;
     }
     .stop-btn {
       background: #f44336;
       color: white;
+      padding: 4px 10px;
+      border-radius: 43px;
     }
     button:hover {
       opacity: 0.9;
