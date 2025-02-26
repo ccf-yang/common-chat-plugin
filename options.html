@@ -3,140 +3,733 @@
 <head>
   <title>AI Chat Extension 配置</title>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
-      width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-      font-family: Arial, sans-serif;
+    :root {
+      --primary-color: #7F95E1;
+      --primary-light: rgba(127, 149, 225, 0.1);
+      --primary-hover: rgba(127, 149, 225, 0.2);
+      --danger-color: #ff4d4f;
+      --danger-light: rgba(255, 77, 79, 0.1);
+      --danger-hover: rgba(255, 77, 79, 0.2);
+      --text-color: #333;
+      --text-secondary: #666;
+      --border-color: #eaeaea;
+      --bg-color: #fff;
+      --bg-light: #f9f9f9;
+      --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      --radius: 8px;
+      --transition: all 0.2s ease;
     }
     
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text-color);
+      background-color: #f5f7fa;
+      line-height: 1.6;
+      display: flex;
+      min-height: 100vh;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* 左侧菜单栏 */
+    .sidebar {
+      width: 240px;
+      background-color: var(--bg-color);
+      border-right: 1px solid var(--border-color);
+      padding: 24px 0;
+      box-shadow: var(--shadow);
+      z-index: 10;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    
+    .sidebar-header {
+      padding: 0 24px 16px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 16px;
+    }
+    
+    .sidebar-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--primary-color);
+    }
+    
+    .sidebar-subtitle {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    
+    .menu-list {
+      list-style: none;
+    }
+    
+    .menu-item {
+      padding: 12px 24px;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      font-weight: 500;
+    }
+    
+    .menu-item:hover {
+      background-color: var(--primary-light);
+      color: var(--primary-color);
+    }
+    
+    .menu-item.active {
+      background-color: var(--primary-light);
+      color: var(--primary-color);
+      border-left: 3px solid var(--primary-color);
+    }
+    
+    .menu-icon {
+      margin-right: 12px;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* 主内容区 */
+    .main-content {
+      flex: 1;
+      padding: 32px;
+      margin-left: 240px;
+      width: calc(100% - 240px);
+    }
+    
+    .content-section {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .content-section.active {
+      display: block;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .section-header {
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .section-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text-color);
+    }
+    
+    /* 卡片样式 */
+    .card {
+      background-color: var(--bg-color);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+      overflow: hidden;
+      transition: var(--transition);
+    }
+    
+    .card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .card-title {
+      font-weight: 600;
+      font-size: 16px;
+    }
+    
+    .card-body {
+      padding: 20px;
+    }
+    
+    /* 表单样式 */
     .form-group {
-      margin-bottom: 15px;
+      margin-bottom: 20px;
     }
     
     .form-group label {
       display: block;
-      margin-bottom: 5px;
-      font-weight: bold;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--text-color);
     }
     
-    .form-group input,
-    .form-group textarea {
+    .form-control {
       width: 100%;
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      box-sizing: border-box;
+      padding: 10px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      font-size: 14px;
+      transition: var(--transition);
     }
     
-    .button-group {
-      display: flex;
-      gap: 10px;
-      margin-top: 15px;
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px var(--primary-light);
     }
     
-    button {
+    textarea.form-control {
+      min-height: 120px;
+      resize: vertical;
+    }
+    
+    /* 按钮样式 */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       padding: 8px 16px;
-      border: none;
-      border-radius: 4px;
-      background-color: #4CAF50;
-      color: white;
+      border-radius: var(--radius);
+      font-weight: 500;
       cursor: pointer;
+      transition: var(--transition);
+      border: none;
+      font-size: 14px;
     }
     
-    button:hover {
-      background-color: #45a049;
+    .btn-icon {
+      margin-right: 8px;
+      font-size: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     
-    button.delete-btn {
-      background-color: #f44336;
+    .btn-primary {
+      background-color: var(--primary-color);
+      color: white;
     }
     
-    button.delete-btn:hover {
-      background-color: #da190b;
+    .btn-primary:hover {
+      background-color: #6a80c7;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 5px rgba(127, 149, 225, 0.3);
     }
     
-    .config-list,
-    .function-list {
-      margin: 15px 0;
-      border: 1px solid #ddd;
-      border-radius: 4px;
+    .btn-outline {
+      background-color: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
     }
     
-    .config-item,
-    .function-item {
+    .btn-outline:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+    
+    .btn-danger {
+      background-color: var(--danger-light);
+      color: var(--danger-color);
+      border: 1px solid var(--danger-color);
+    }
+    
+    .btn-danger:hover {
+      background-color: var(--danger-hover);
+      transform: translateY(-1px);
+    }
+    
+    /* 列表项样式 */
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .list-item {
+      background-color: var(--bg-color);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px;
-      border-bottom: 1px solid #eee;
+      transition: var(--transition);
     }
     
-    .config-item:last-child,
-    .function-item:last-child {
+    .list-item:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    .item-info {
+      flex: 1;
+    }
+    
+    .item-title {
+      font-weight: 600;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+    
+    .item-subtitle {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    
+    .item-actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    /* 空状态样式 */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      background-color: var(--bg-color);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    
+    .empty-state p {
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    
+    /* 模态框样式 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      visibility: hidden;
+      transition: var(--transition);
+    }
+    
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    .modal {
+      background-color: var(--bg-color);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 500px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+      transform: translateY(20px);
+      transition: transform 0.3s ease;
+    }
+    
+    .modal-overlay.active .modal {
+      transform: translateY(0);
+    }
+    
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .modal-title {
+      font-weight: 600;
+      font-size: 18px;
+    }
+    
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: var(--transition);
+    }
+    
+    .modal-close:hover {
+      background-color: var(--danger-light);
+      color: var(--danger-color);
+    }
+    
+    .modal-body {
+      padding: 20px;
+    }
+    
+    .modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+    
+    /* 响应式调整 */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 200px;
+      }
+      
+      .main-content {
+        margin-left: 200px;
+        width: calc(100% - 200px);
+        padding: 24px;
+      }
+    }
+    
+    @media (max-width: 576px) {
+      body {
+        flex-direction: column;
+      }
+      
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        padding: 16px 0;
+      }
+      
+      .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 16px;
+      }
+    }
+    
+    /* 在现有样式的基础上添加以下样式 */
+    
+    .list-header {
+      display: flex;
+      background-color: var(--bg-light);
+      padding: 12px 16px;
+      border-radius: var(--radius) var(--radius) 0 0;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .list-row {
+      display: flex;
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+      align-items: center;
+      background-color: var(--bg-color);
+      transition: var(--transition);
+    }
+    
+    .list-row:last-child {
       border-bottom: none;
+      border-radius: 0 0 var(--radius) var(--radius);
     }
     
-    h2 {
-      color: #333;
-      margin-bottom: 15px;
+    .list-row:hover {
+      background-color: var(--bg-light);
     }
     
-    .form-container {
-      background-color: #f9f9f9;
-      padding: 15px;
-      border-radius: 4px;
-      margin-top: 15px;
+    .list-cell {
+      flex: 1;
+      padding: 0 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    .list-cell.actions {
+      flex: 0 0 160px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    
+    .prompt-cell {
+      flex: 2;
+      color: var(--text-secondary);
+    }
+    
+    .btn-small {
+      padding: 4px 12px;
+      font-size: 13px;
+    }
+    
+    .item-list {
+      background-color: var(--bg-color);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+      overflow: hidden;
+    }
+    
+    /* 空状态样式优化 */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      background-color: var(--bg-color);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    
+    .empty-state p {
+      color: var(--text-secondary);
+      margin: 4px 0;
+    }
+    
+    /* API Key显示样式 */
+    .key-cell {
+      display: flex !important;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .masked-key {
+      flex: 1;
+      font-family: monospace;
+    }
+    
+    .btn-icon {
+      padding: 4px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: var(--transition);
+    }
+    
+    .btn-icon:hover {
+      color: var(--primary-color);
+    }
+    
+    .btn-icon.showing {
+      color: var(--primary-color);
+    }
+    
+    /* 开关按钮样式 */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 20px;
+    }
+    
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+    }
+    
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: .4s;
+    }
+    
+    input:checked + .slider {
+      background-color: var(--primary-color);
+    }
+    
+    input:focus + .slider {
+      box-shadow: 0 0 1px var(--primary-color);
+    }
+    
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+    
+    .slider.round {
+      border-radius: 20px;
+    }
+    
+    .slider.round:before {
+      border-radius: 50%;
     }
   </style>
 </head>
 <body>
-  <h2>API 配置</h2>
-  <div id="apiConfigs" class="config-list"></div>
-  <button id="addApiConfig">新增 API 配置</button>
+  <!-- 左侧菜单栏 -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h1 class="sidebar-title">AI Chat Extension</h1>
+      <p class="sidebar-subtitle">配置您的AI助手</p>
+    </div>
+    <ul class="menu-list">
+      <li class="menu-item active" data-section="api-section">
+        <div class="menu-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        API 配置
+      </li>
+      <li class="menu-item" data-section="function-section">
+        <div class="menu-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+        </div>
+        自定义功能
+      </li>
+    </ul>
+  </div>
 
-  <div id="apiForm" style="display: none;" class="form-container">
-    <h3>新增 API 配置</h3>
-    <div class="form-group">
-      <label>名称:</label>
-      <input type="text" id="configName">
+  <!-- 主内容区 -->
+  <div class="main-content">
+    <!-- API 配置部分 -->
+    <div id="api-section" class="content-section active">
+      <div class="section-header">
+        <h2 class="section-title">API 配置</h2>
+        <button id="addApiConfig" class="btn btn-primary">
+          <span class="btn-icon">+</span>新增 API
+        </button>
+      </div>
+      
+      <div id="apiConfigs" class="item-list">
+        <!-- API 配置项将通过 JS 动态添加 -->
+      </div>
+      
+      <div class="empty-state" id="api-empty-state" style="display: none;">
+        <div class="empty-icon">📋</div>
+        <p>暂无 API 配置</p>
+        <p>点击"新增 API"按钮添加您的第一个 API 配置</p>
+      </div>
     </div>
-    <div class="form-group">
-      <label>URL:</label>
-      <input type="text" id="apiUrl">
-    </div>
-    <div class="form-group">
-      <label>API Key:</label>
-      <input type="text" id="apiKey">
-    </div>
-    <div class="form-group">
-      <label>模型:</label>
-      <input type="text" id="apiModel">
-    </div>
-    <div class="button-group">
-      <button id="saveApiConfigBtn">保存</button>
-      <button onclick="document.getElementById('apiForm').style.display='none'">取消</button>
+
+    <!-- 自定义功能部分 -->
+    <div id="function-section" class="content-section">
+      <div class="section-header">
+        <h2 class="section-title">自定义功能</h2>
+        <button id="addFunctionBtn" class="btn btn-primary">
+          <span class="btn-icon">+</span>新增功能
+        </button>
+      </div>
+      
+      <div id="customFunctions" class="item-list">
+        <!-- 自定义功能项将通过 JS 动态添加 -->
+      </div>
+      
+      <div class="empty-state" id="function-empty-state" style="display: none;">
+        <div class="empty-icon">🔍</div>
+        <p>暂无自定义功能</p>
+        <p>点击"新增功能"按钮创建您的第一个自定义功能</p>
+      </div>
     </div>
   </div>
 
-  <h2>自定义功能</h2>
-  <div id="customFunctions" class="function-list"></div>
-  <button id="addFunctionBtn">新增功能</button>
+  <!-- API 配置模态框 -->
+  <div id="apiModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="apiModalTitle">新增 API 配置</h3>
+        <button class="modal-close" id="closeApiModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="configName">名称:</label>
+          <input type="text" id="configName" class="form-control" placeholder="例如: OpenAI API">
+        </div>
+        <div class="form-group">
+          <label for="apiUrl">URL:</label>
+          <input type="text" id="apiUrl" class="form-control" placeholder="例如: https://api.openai.com/v1/chat/completions">
+        </div>
+        <div class="form-group">
+          <label for="apiKey">API Key:</label>
+          <input type="text" id="apiKey" class="form-control" placeholder="您的 API 密钥">
+        </div>
+        <div class="form-group">
+          <label for="apiModel">模型:</label>
+          <input type="text" id="apiModel" class="form-control" placeholder="例如: gpt-3.5-turbo">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="cancelApiBtn">取消</button>
+        <button class="btn btn-primary" id="saveApiConfigBtn">保存</button>
+      </div>
+    </div>
+  </div>
 
-  <div id="functionForm" style="display: none;" class="form-container">
-    <h3>新增功能</h3>
-    <div class="form-group">
-      <label>功能名称:</label>
-      <input type="text" id="functionName">
-    </div>
-    <div class="form-group">
-      <label>提示词:</label>
-      <textarea id="functionPrompt" rows="3"></textarea>
-    </div>
-    <div class="button-group">
-      <button id="saveFunctionBtn">保存</button>
-      <button onclick="document.getElementById('functionForm').style.display='none'">取消</button>
+  <!-- 自定义功能模态框 -->
+  <div id="functionModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="functionModalTitle">新增自定义功能</h3>
+        <button class="modal-close" id="closeFunctionModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="functionName">功能名称:</label>
+          <input type="text" id="functionName" class="form-control" placeholder="例如: 代码解释">
+        </div>
+        <div class="form-group">
+          <label for="functionPrompt">提示词:</label>
+          <textarea id="functionPrompt" class="form-control" placeholder="输入提示词模板，用于指导 AI 如何处理用户输入"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="cancelFunctionBtn">取消</button>
+        <button class="btn btn-primary" id="saveFunctionBtn">保存</button>
+      </div>
     </div>
   </div>
 
