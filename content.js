@@ -85,6 +85,34 @@ function createPluginIcon() {
     }
   `;
 
+  // 创建聊天按钮
+  const chatButton = document.createElement('button');
+  chatButton.id = 'ai-plugin-chat';
+  chatButton.textContent = '对话';
+  chatButton.style.cssText = `
+    width: 52px;
+    height: 28px;
+    background: linear-gradient(135deg, #7F95E1 0%, #B8B3E9 100%);
+    color: white;
+    border: 0.5px solid rgba(255, 255, 255, 0.3);
+    border-radius: 14px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 2px 6px rgba(127, 149, 225, 0.2);
+    transition: transform 0.2s ease;
+    white-space: nowrap;
+    z-index: 2147483647;
+    &:hover {
+      transform: scale(1.05);
+    }
+  `;
+
   // 创建功能菜单
   const menu = document.createElement('div');
   menu.id = 'ai-plugin-menu';
@@ -158,6 +186,14 @@ function createPluginIcon() {
     menu.style.display = 'flex';
   });
 
+  // 添加聊天按钮点击事件
+  chatButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (cachedSelection.text) {
+      createChatWindow(cachedSelection.text);
+    }
+  });
+
   // 点击其他地方关闭菜单
   document.addEventListener('click', (e) => {
     menu.style.display = 'none';
@@ -171,6 +207,7 @@ function createPluginIcon() {
   // 组装元素
   container.appendChild(icon);
   container.appendChild(button);
+  container.appendChild(chatButton);
   container.appendChild(menu);
   document.body.appendChild(container);
 
@@ -935,3 +972,687 @@ function createFloatingWindow() {
   document.body.appendChild(div);
   return div;
 }
+
+
+// 以下是聊天窗口的逻辑代码
+// 创建聊天窗口
+function createChatWindow(initialText) {
+  const chatWindow = document.createElement('div');
+  chatWindow.id = 'ai-chat-window';
+  chatWindow.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 800px;
+    height: 600px;
+    background: rgba(244, 245, 250, 0.98);
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    z-index: 2147483647;
+    overflow: hidden;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 0.5px solid rgba(127, 149, 225, 0.2);
+    resize: both;
+    min-width: 300px;
+    min-height: 400px;
+    max-width: 90vw;
+    max-height: 90vh;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "liga", "kern";
+  `;
+
+  chatWindow.innerHTML = `
+    <div class="chat-header" style="
+      padding: 5px 17px;
+      background: rgba(234, 236, 245, 0.95);
+      border-bottom: 0.5px solid rgba(127, 149, 225, 0.2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: move;
+      user-select: none;
+      height: 40px;
+    ">
+      <div class="chat-title" style="
+        font-weight: 600;
+        font-size: 14px;
+        color: #333;
+      ">AI 对话</div>
+      <div class="chat-actions" style="
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      ">
+        <button class="stop-btn" style="
+          background: rgba(255, 77, 79, 0.1);
+          color: #ff4d4f;
+          padding: 6px 14px;
+          border-radius: 6px;
+          font-weight: 500;
+          border: 1px solid rgba(255, 77, 79, 0.2);
+          cursor: pointer;
+          display: none;
+          transition: all 0.2s ease;
+        ">停止</button>
+        <button class="close-btn" style="
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.5);
+          color: #666;
+          font-size: 18px;
+          border-radius: 50%;
+          padding: 0;
+          border: 1px solid rgba(0, 0, 0, 0.05);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+          line-height: 1;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        ">×</button>
+      </div>
+    </div>
+    <div class="chat-messages" style="
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #333;
+    "></div>
+    <div class="chat-input-container" style="
+      padding: 16px;
+      border-top: 0.5px solid rgba(127, 149, 225, 0.2);
+      display: flex;
+      gap: 8px;
+      background: rgba(234, 236, 245, 0.95);
+    ">
+      <div style="
+        position: relative;
+        flex: 1;
+        display: flex;
+      ">
+        <textarea class="chat-input" style="
+          width: 100%;
+          padding: 8px 32px 8px 12px;
+          border: 1px solid rgba(127, 149, 225, 0.2);
+          border-radius: 8px;
+          resize: none;
+          height: 60px;
+          font-size: 14px;
+          line-height: 1.5;
+          background: rgba(255, 255, 255, 0.9);
+          color: #333;
+        " placeholder="输入消息，按Enter发送..."></textarea>
+        <button class="clear-input-btn" style="
+          position: absolute;
+          right: 8px;
+          top: 8px;
+          width: 16px;
+          height: 16px;
+          border: none;
+          background: none;
+          padding: 0;
+          cursor: pointer;
+          color: #999;
+          font-size: 16px;
+          line-height: 1;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+        ">×</button>
+      </div>
+      <button class="send-btn" style="
+        padding: 8px 16px;
+        background: rgba(127, 149, 225, 0.1);
+        color: #7F95E1;
+        border-radius: 6px;
+        font-weight: 500;
+        border: 1px solid rgba(127, 149, 225, 0.2);
+        cursor: pointer;
+        height: 60px;
+        transition: all 0.2s ease;
+      ">发送</button>
+    </div>
+  `;
+
+  // 添加样式
+  const style = document.createElement('style');
+  style.textContent += `
+    #ai-chat-window .stop-btn:hover {
+      background: rgba(255, 77, 79, 0.2);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 5px rgba(255, 77, 79, 0.2);
+    }
+    
+    #ai-chat-window .close-btn:hover {
+      background: rgba(255, 77, 79, 0.1);
+      color: #ff4d4f;
+      transform: scale(1.05);
+    }
+    
+    #ai-chat-window .send-btn:hover {
+      background: rgba(127, 149, 225, 0.2);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 5px rgba(127, 149, 225, 0.2);
+    }
+    
+    #ai-chat-window::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 15px;
+      height: 15px;
+      cursor: nwse-resize;
+      background: linear-gradient(135deg, transparent 50%, rgba(127, 149, 225, 0.5) 50%);
+      border-bottom-right-radius: 12px;
+    }
+    
+    #ai-chat-window .clear-input-btn:hover {
+      color: #ff4d4f;
+      transform: scale(1.1);
+    }
+  `;
+  document.head.appendChild(style);
+
+  // 添加到页面
+  document.body.appendChild(chatWindow);
+
+  // 获取必要的元素
+  const header = chatWindow.querySelector('.chat-header');
+  const messagesContainer = chatWindow.querySelector('.chat-messages');
+  const input = chatWindow.querySelector('.chat-input');
+  const sendBtn = chatWindow.querySelector('.send-btn');
+  const stopBtn = chatWindow.querySelector('.stop-btn');
+  const closeBtn = chatWindow.querySelector('.close-btn');
+
+  // 获取清空按钮
+  const clearBtn = chatWindow.querySelector('.clear-input-btn');
+
+  // 监听输入框内容变化
+  input.addEventListener('input', () => {
+    clearBtn.style.display = input.value.length > 0 ? 'flex' : 'none';
+  });
+
+  // 添加清空按钮点击事件
+  clearBtn.addEventListener('click', () => {
+    input.value = '';
+    clearBtn.style.display = 'none';
+    input.focus();
+  });
+
+  // 设置初始输入内容时显示清空按钮
+  const initialPrompt = `请按需求处理以下中括号内的文字：[${initialText}],直接输出结果即可\n需求：`;
+  input.value = initialPrompt;
+  clearBtn.style.display = 'flex';
+
+  // 添加拖动功能
+  let isDragging = false;
+  let offsetX, offsetY;
+  let initialTransform = null;
+
+  header.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.chat-header')) {
+      isDragging = true;
+      
+      // 保存初始transform值
+      initialTransform = chatWindow.style.transform;
+      
+      // 如果窗口还在初始居中状态，先转换为具体坐标
+      if (chatWindow.style.transform.includes('translate')) {
+        const rect = chatWindow.getBoundingClientRect();
+        chatWindow.style.transform = 'none';
+        chatWindow.style.top = `${rect.top}px`;
+        chatWindow.style.left = `${rect.left}px`;
+      }
+      
+      // 计算偏移量
+      const rect = chatWindow.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      
+      // 防止文本选择
+      e.preventDefault();
+    }
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (isDragging) {
+      chatWindow.style.left = `${e.clientX - offsetX}px`;
+      chatWindow.style.top = `${e.clientY - offsetY}px`;
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+    initialTransform = null;
+  });
+
+  // 修改关闭按钮功能
+  closeBtn.addEventListener('click', () => {
+    document.body.removeChild(chatWindow);
+  });
+
+  // 初始化聊天上下文
+  let chatContext = [];
+
+  // 发送消息函数
+  async function sendMessage() {
+    const message = input.value.trim();
+    if (!message) return;
+
+    // 添加用户消息
+    addMessage('user', message);
+    input.value = '';
+
+    // 更新上下文并保持最大长度为5轮对话
+    chatContext.push({ role: 'user', content: message });
+    if (chatContext.length > 10) { // 保持5轮对话（10条消息）
+      chatContext = chatContext.slice(-10);
+    }
+
+    // 处理对话
+    await processChat(chatContext, messagesContainer, stopBtn);
+  }
+
+  // 输入框事件处理
+  input.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      await sendMessage();
+    }
+  });
+
+  // 发送按钮点击事件
+  sendBtn.addEventListener('click', sendMessage);
+
+  // 添加停止按钮的点击事件处理
+  stopBtn.addEventListener('click', () => {
+    if (controller) {
+      controller.abort(); // 中断当前请求
+      stopBtn.style.display = 'none';
+      
+      // 添加"已停止"提示
+      const stopMessage = document.createElement('div');
+      stopMessage.style.cssText = `
+        padding: 8px 12px;
+        background: #fff2f0;
+        color: #ff4d4f;
+        border-radius: 4px;
+        font-size: 12px;
+        margin-top: 8px;
+        text-align: center;
+      `;
+      stopMessage.textContent = '已停止生成';
+      
+      // 找到最后一个消息容器
+      const lastMessage = messagesContainer.lastElementChild;
+      if (lastMessage) {
+        lastMessage.appendChild(stopMessage);
+      }
+      
+      // 重置控制器
+      controller = null;
+    }
+  });
+}
+
+// 添加 processChat 函数
+async function processChat(context, messagesContainer, stopBtn) {
+  try {
+    // 获取API配置
+    const { apiConfigs = [] } = await chrome.storage.local.get(['apiConfigs']);
+    const activeApi = apiConfigs.find(api => api.enabled);
+    
+    if (!activeApi) {
+      throw new Error('请先启用一个API配置');
+    }
+
+    // 显示停止按钮
+    stopBtn.style.display = 'inline-block';
+
+    // 创建回复消息容器
+    const responseDiv = document.createElement('div');
+    responseDiv.className = 'chat-message assistant';
+    responseDiv.style.cssText = `
+      padding: 12px;
+      border-radius: 8px;
+      max-width: 80%;
+      align-self: flex-start;
+      background: #f5f5f5;
+    `;
+    messagesContainer.appendChild(responseDiv);
+
+    // 添加自动滚动控制
+    let isUserScrolling = false;
+    let shouldAutoScroll = true;
+
+    // 监听滚动事件
+    const scrollHandler = () => {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
+      // 判断是否处于底部
+      const isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 10;
+      
+      // 如果用户正在向上滚动，禁用自动滚动
+      if (!isAtBottom && !isUserScrolling) {
+        shouldAutoScroll = false;
+      }
+      
+      // 如果滚动到底部，重新启用自动滚动
+      if (isAtBottom) {
+        shouldAutoScroll = true;
+      }
+    };
+
+    // 监听用户滚动
+    const wheelHandler = () => {
+      isUserScrolling = true;
+      clearTimeout(window.scrollTimeout);
+      window.scrollTimeout = setTimeout(() => {
+        isUserScrolling = false;
+      }, 150);
+    };
+
+    messagesContainer.addEventListener('scroll', scrollHandler);
+    messagesContainer.addEventListener('wheel', wheelHandler);
+
+    // 自动滚动函数
+    const scrollToBottom = () => {
+      if (shouldAutoScroll && !isUserScrolling) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+    };
+
+    // 初始滚动到底部
+    scrollToBottom();
+
+    // 创建AbortController
+    controller = new AbortController();
+
+    // 创建请求
+    const response = await fetch(activeApi.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${activeApi.key}`
+      },
+      body: JSON.stringify({
+        model: activeApi.model,
+        messages: context,
+        stream: true
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`请求失败: ${response.status} ${response.statusText}`);
+    }
+
+    // 处理流式响应
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let result = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const jsonStr = line.slice(6);
+          if (jsonStr === '[DONE]') continue;
+
+          try {
+            const data = JSON.parse(jsonStr);
+            const content = data.choices[0]?.delta?.content || '';
+            result += content;
+            responseDiv.innerHTML = marked.parse(result);
+            scrollToBottom();
+          } catch (error) {
+            console.error('解析响应失败:', error);
+          }
+        }
+      }
+    }
+
+    // 清理事件监听器
+    messagesContainer.removeEventListener('scroll', scrollHandler);
+    messagesContainer.removeEventListener('wheel', wheelHandler);
+
+    // 添加复制按钮
+    const copyButton = document.createElement('button');
+    copyButton.className = 'copy-btn';
+    copyButton.innerHTML = '复制';
+    copyButton.style.cssText = `
+      float: right;
+      padding: 2px 6px;
+      margin-left: 8px;
+      border: none;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    `;
+    responseDiv.appendChild(copyButton);
+
+    // 复制按钮事件
+    responseDiv.addEventListener('mouseenter', () => {
+      copyButton.style.opacity = '1';
+    });
+    responseDiv.addEventListener('mouseleave', () => {
+      copyButton.style.opacity = '0';
+    });
+    copyButton.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(result);
+        copyButton.innerHTML = '已复制';
+        setTimeout(() => {
+          copyButton.innerHTML = '复制';
+        }, 1500);
+      } catch (err) {
+        console.error('复制失败:', err);
+      }
+    });
+
+    // 更新上下文
+    context.push({ role: 'assistant', content: result });
+
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.log('聊天被中断');
+    } else {
+      console.error('聊天错误:', error);
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'chat-message error';
+      errorDiv.style.cssText = `
+        padding: 12px;
+        border-radius: 8px;
+        max-width: 80%;
+        align-self: flex-start;
+        background: #fff2f0;
+        color: #ff4d4f;
+      `;
+      errorDiv.textContent = `错误: ${error.message}`;
+      messagesContainer.appendChild(errorDiv);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+  } finally {
+    stopBtn.style.display = 'none';
+    controller = null;
+  }
+}
+
+// 修改 addMessage 函数
+function addMessage(role, content) {
+  const messagesContainer = document.querySelector('.chat-messages');
+  if (!messagesContainer) return;
+
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `chat-message ${role}`;
+  messageDiv.style.cssText = `
+    padding: 12px;
+    border-radius: 8px;
+    max-width: 80%;
+    ${role === 'user' ? 'align-self: flex-end; background: #e6f0ff;' : 'align-self: flex-start; background: #f5f5f5;'}
+  `;
+
+  // 添加消息内容（使用 marked 渲染 Markdown）
+  messageDiv.innerHTML = marked.parse(content);
+
+  // 添加 Markdown 样式
+  const markdownStyles = document.createElement('style');
+  markdownStyles.textContent = `
+    .chat-message {
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    
+    .chat-message p {
+      margin: 0 0 10px 0;
+    }
+    
+    .chat-message p:last-child {
+      margin-bottom: 0;
+    }
+    
+    .chat-message ul,
+    .chat-message ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+    
+    .chat-message li {
+      margin: 0;
+    }
+    
+    .chat-message pre {
+      margin: 10px 0;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    
+    .chat-message code {
+      font-family: monospace;
+      padding: 2px 4px;
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+    
+    .chat-message pre code {
+      padding: 0;
+      background: none;
+    }
+    
+    .chat-message blockquote {
+      margin: 10px 0;
+      padding-left: 12px;
+      border-left: 3px solid #ddd;
+      color: #666;
+    }
+    
+    .chat-message h1,
+    .chat-message h2,
+    .chat-message h3,
+    .chat-message h4,
+    .chat-message h5,
+    .chat-message h6 {
+      margin: 15px 0 10px 0;
+      line-height: 1.4;
+    }
+    
+    .chat-message h1:first-child,
+    .chat-message h2:first-child,
+    .chat-message h3:first-child,
+    .chat-message h4:first-child,
+    .chat-message h5:first-child,
+    .chat-message h6:first-child {
+      margin-top: 0;
+    }
+    
+    .chat-message table {
+      border-collapse: collapse;
+      margin: 10px 0;
+      width: 100%;
+    }
+    
+    .chat-message table th,
+    .chat-message table td {
+      border: 1px solid #ddd;
+      padding: 6px 8px;
+      text-align: left;
+    }
+    
+    .chat-message table th {
+      background: rgba(0, 0, 0, 0.05);
+    }
+  `;
+  document.head.appendChild(markdownStyles);
+
+  // 如果是用户消息，不需要复制按钮
+  if (role === 'assistant') {
+    // 添加复制按钮
+    const copyButton = document.createElement('button');
+    copyButton.className = 'copy-btn';
+    copyButton.innerHTML = '复制';
+    copyButton.style.cssText = `
+      float: right;
+      padding: 2px 6px;
+      margin-left: 8px;
+      border: none;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    `;
+
+    // 显示/隐藏复制按钮
+    messageDiv.addEventListener('mouseenter', () => {
+      copyButton.style.opacity = '1';
+    });
+    messageDiv.addEventListener('mouseleave', () => {
+      copyButton.style.opacity = '0';
+    });
+
+    // 复制功能
+    copyButton.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(content);
+        copyButton.innerHTML = '已复制';
+        setTimeout(() => {
+          copyButton.innerHTML = '复制';
+        }, 1500);
+      } catch (err) {
+        console.error('复制失败:', err);
+      }
+    });
+
+    messageDiv.appendChild(copyButton);
+  }
+
+  messagesContainer.appendChild(messageDiv);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+// 以上是聊天窗口的逻辑代码
