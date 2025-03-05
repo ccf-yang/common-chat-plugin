@@ -588,6 +588,21 @@ async function processApiRequest(data) {
       signal: controller.signal
     });
 
+    // 检查响应状态
+    if (!response.ok) {
+      let errorMessage;
+      try {
+        // 尝试解析错误响应的JSON
+        const errorData = await response.json();
+        errorMessage = errorData.error?.message || errorData.message || `请求失败: ${response.status}, ${errorData.msg}` ||  `请求失败: ${response.status} ${response.statusText}`;
+      } catch (e) {
+        // 如果无法解析JSON，使用状态码信息
+        errorMessage = `请求失败: ${response.status} ${response.statusText}`;
+      }
+            
+      throw new Error(errorMessage);
+    }
+
     // 处理流式响应
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
