@@ -1334,7 +1334,44 @@ async function processChat(context, messagesContainer, stopBtn) {
       align-self: flex-start;
       background: #f5f5f5;
     `;
+
+    // 创建思考内容容器
+    const reasoningDiv = document.createElement('div');
+    reasoningDiv.className = 'reasoning-content';
+    reasoningDiv.style.display = 'none';
+    
+    // 创建折叠按钮
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'toggle-reasoning-btn';
+    toggleBtn.style.cssText = `
+      font-size: 12px;
+      padding: 4px 8px;
+      margin-bottom: 8px;
+      border: none;
+      background: rgba(127, 149, 225, 0.1);
+      color: #7F95E1;
+      border-radius: 4px;
+      cursor: pointer;
+      display: none;
+      transition: all 0.2s ease;
+    `;
+    toggleBtn.textContent = '显示思考过程';
+    
+    // 添加折叠按钮点击事件
+    toggleBtn.addEventListener('click', () => {
+      const isHidden = reasoningDiv.style.display === 'none';
+      reasoningDiv.style.display = isHidden ? 'block' : 'none';
+      toggleBtn.textContent = isHidden ? '隐藏思考过程' : '显示思考过程';
+    });
+
+    responseDiv.appendChild(toggleBtn);
+    responseDiv.appendChild(reasoningDiv);
     messagesContainer.appendChild(responseDiv);
+
+    // 创建回复内容容器
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'response-content';
+    responseDiv.appendChild(contentDiv);
 
     // 添加自动滚动控制
     let isUserScrolling = false;
@@ -1405,6 +1442,8 @@ async function processChat(context, messagesContainer, stopBtn) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let result = '';
+    let reasoningContent = '';
+    let hasReasoning = false;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -1421,8 +1460,20 @@ async function processChat(context, messagesContainer, stopBtn) {
           try {
             const data = JSON.parse(jsonStr);
             const content = data.choices[0]?.delta?.content || '';
-            result += content;
-            responseDiv.innerHTML = marked.parse(result);
+            const reasoning = data.choices[0]?.delta?.reasoning_content || '';
+
+            if (reasoning) {
+              hasReasoning = true;
+              reasoningContent += reasoning;
+              toggleBtn.style.display = 'inline-block';
+              reasoningDiv.innerHTML = marked.parse(reasoningContent);
+            }
+
+            if (content) {
+              result += content;
+              contentDiv.innerHTML = marked.parse(result);
+            }
+
             scrollToBottom();
           } catch (error) {
             console.error('解析响应失败:', error);
@@ -1434,6 +1485,25 @@ async function processChat(context, messagesContainer, stopBtn) {
     // 清理事件监听器
     messagesContainer.removeEventListener('scroll', scrollHandler);
     messagesContainer.removeEventListener('wheel', wheelHandler);
+
+    // 添加样式
+    const style = document.createElement('style');
+    style.textContent = `
+      .reasoning-content {
+        margin: 8px 0;
+        padding: 8px 12px;
+        background: rgba(127, 149, 225, 0.05);
+        border-radius: 4px;
+        font-size: 13px;
+        color: #666;
+      }
+
+      .toggle-reasoning-btn:hover {
+        background: rgba(127, 149, 225, 0.2);
+        transform: translateY(-1px);
+      }
+    `;
+    document.head.appendChild(style);
 
     // 添加复制按钮
     const copyButton = document.createElement('button');
