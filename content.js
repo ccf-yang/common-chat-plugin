@@ -412,6 +412,7 @@ function showResult(content, isComplete) {
       </div>
       <div class="thinking-container" style="display: block;">
         <div class="thinking-header">
+          <div class="thinking-title">思考过程</div>
           <button class="toggle-thinking-btn">显示思考过程</button>
         </div>
         <div class="thinking-content" style="display: none;"></div>
@@ -470,6 +471,7 @@ function showResult(content, isComplete) {
       thinkingContainer.style.display = 'block'; // 容器始终显示
       thinkingContainer.innerHTML = `
         <div class="thinking-header">
+          <div class="thinking-title">thinking</div>
           <button class="toggle-thinking-btn">显示思考过程</button>
         </div>
         <div class="thinking-content" style="display: none;"></div>
@@ -542,7 +544,8 @@ function adjustContentHeight() {
     
     // 设置思考容器的宽度为窗口宽度的三分之二
     thinkingContainer.style.width = `${Math.floor(windowWidth * 2/3)}px`;
-    thinkingContainer.style.margin = '0 auto'; // 居中显示
+    // 移除居中设置，确保左对齐
+    thinkingContainer.style.margin = '10px 0 10px 16px'; // 左对齐，左边距16px
     thinkingContainer.style.maxHeight = `${thinkingContainerTargetHeight}px`;
     
     // 检查思考内容是否可见
@@ -1003,7 +1006,7 @@ function createFloatingWindow() {
       border: 0.5px solid rgba(127, 149, 225, 0.2);
       border-radius: 8px;
       background: rgba(234, 236, 245, 0.5);
-      margin: 10px auto;
+      margin: 10px 0 10px 16px; /* 左对齐，左边距16px */
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
       overflow: hidden;
     }
@@ -1014,22 +1017,29 @@ function createFloatingWindow() {
       justify-content: space-between;
       align-items: center;
       border-bottom: 0.5px solid rgba(127, 149, 225, 0.1);
-      background: rgba(234, 236, 245, 0.8);
+      background: rgba(0, 0, 0, 0.15); /* 更改标题背景色为黑色半透明 */
+    }
+    
+    #ai-chat-floating-window .thinking-title {
+      font-weight: 500;
+      font-size: 13px;
+      color: #333;
     }
     
     #ai-chat-floating-window .toggle-thinking-btn {
-      background: rgba(127, 149, 225, 0.1);
-      color: #7F95E1;
+      background: rgba(127, 149, 225, 0.2);
+      color: #5A6EA5; /* 更深的蓝色 */
       padding: 4px 10px;
       border-radius: 4px;
       font-size: 12px;
       border: none;
       cursor: pointer;
       transition: all 0.2s ease;
+      font-weight: 500;
     }
     
     #ai-chat-floating-window .toggle-thinking-btn:hover {
-      background: rgba(127, 149, 225, 0.2);
+      background: rgba(127, 149, 225, 0.3);
       transform: translateY(-1px);
     }
     
@@ -1039,7 +1049,7 @@ function createFloatingWindow() {
       font-size: 13px;
       color: #666;
       line-height: 1.5;
-      background: rgba(255, 255, 255, 0.5);
+      background: rgba(255, 255, 255, 0.7); /* 更亮的背景色，增强对比 */
     }
     
     /* 当思考内容可见时调整内容区域高度 */
@@ -1897,7 +1907,6 @@ function addMessage(role, content) {
       padding: 2px 4px;
       background: rgba(0, 0, 0, 0.05);
       border-radius: 3px;
-      font-size: 0.9em;
     }
     
     .chat-message pre code {
