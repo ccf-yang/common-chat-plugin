@@ -410,6 +410,12 @@ function showResult(content, isComplete) {
           <button class="close-btn">×</button>
         </div>
       </div>
+      <div class="thinking-container" style="display: block;">
+        <div class="thinking-header">
+          <button class="toggle-thinking-btn">显示思考过程</button>
+        </div>
+        <div class="thinking-content" style="display: none;"></div>
+      </div>
       <div class="content"></div>
     `;
     
@@ -419,6 +425,10 @@ function showResult(content, isComplete) {
     if (!isComplete) {
       setupStopButton();
     }
+    setupThinkingToggleButton();
+    
+    // 初始调整内容高度
+    setTimeout(adjustContentHeight, 0);
   } else {
     // 窗口已存在，只更新必要的部分
     
@@ -452,6 +462,26 @@ function showResult(content, isComplete) {
       buttonGroup.insertBefore(newStopBtn, copyBtn.nextSibling);
       setupStopButton();
     }
+    
+    // 确保思考容器存在
+    if (!floatingWindow.querySelector('.thinking-container')) {
+      const thinkingContainer = document.createElement('div');
+      thinkingContainer.className = 'thinking-container';
+      thinkingContainer.style.display = 'block'; // 容器始终显示
+      thinkingContainer.innerHTML = `
+        <div class="thinking-header">
+          <button class="toggle-thinking-btn">显示思考过程</button>
+        </div>
+        <div class="thinking-content" style="display: none;"></div>
+      `;
+      
+      // 在内容区域之前插入思考容器
+      const contentDiv = floatingWindow.querySelector('.content');
+      floatingWindow.insertBefore(thinkingContainer, contentDiv);
+      
+      // 设置思考切换按钮事件
+      setupThinkingToggleButton();
+    }
   }
   
   // 更新内容区域 - 只更新内容，不重建整个结构
@@ -477,6 +507,9 @@ function showResult(content, isComplete) {
       });
     }
     
+    // 调整内容区域高度
+    adjustContentHeight();
+    
     // 根据用户滚动位置决定是否自动滚动到底部
     if (shouldScrollToBottom) {
       setTimeout(() => {
@@ -486,6 +519,57 @@ function showResult(content, isComplete) {
   }
   
   floatingWindow.style.display = 'block';
+}
+
+// 调整内容区域高度
+function adjustContentHeight() {
+  const thinkingContainer = floatingWindow.querySelector('.thinking-container');
+  const thinkingContent = floatingWindow.querySelector('.thinking-content');
+  const contentDiv = floatingWindow.querySelector('.content');
+  
+  if (contentDiv && thinkingContainer) {
+    // 获取窗口总高度
+    const windowHeight = floatingWindow.clientHeight;
+    const windowWidth = floatingWindow.clientWidth;
+    
+    // 标题栏高度
+    const titleBarHeight = floatingWindow.querySelector('.title-bar').clientHeight || 40;
+    // 思考容器头部高度
+    const thinkingHeaderHeight = thinkingContainer.querySelector('.thinking-header').clientHeight || 40;
+    
+    // 计算思考容器的目标高度（窗口高度的三分之一）
+    const thinkingContainerTargetHeight = Math.floor(windowHeight / 3);
+    
+    // 设置思考容器的宽度为窗口宽度的三分之二
+    thinkingContainer.style.width = `${Math.floor(windowWidth * 2/3)}px`;
+    thinkingContainer.style.margin = '0 auto'; // 居中显示
+    thinkingContainer.style.maxHeight = `${thinkingContainerTargetHeight}px`;
+    
+    // 检查思考内容是否可见
+    const isThinkingVisible = thinkingContent && thinkingContent.style.display !== 'none';
+    
+    // 计算内容区域应有的高度
+    let contentHeight;
+    
+    if (isThinkingVisible) {
+      // 思考内容可见时，减去标题栏高度和思考容器完整高度
+      contentHeight = windowHeight - titleBarHeight - thinkingContainerTargetHeight;
+    } else {
+      // 思考内容隐藏时，只减去标题栏高度和思考容器头部高度
+      contentHeight = windowHeight - titleBarHeight - thinkingHeaderHeight;
+    }
+    
+    // 确保高度不小于最小值
+    contentHeight = Math.max(contentHeight, 100);
+    
+    // 设置内容区域高度
+    contentDiv.style.height = `${contentHeight}px`;
+    
+    // 确保思考内容高度正确
+    if (thinkingContent) {
+      thinkingContent.style.height = `${thinkingContainerTargetHeight - thinkingHeaderHeight}px`;
+    }
+  }
 }
 
 // 设置停止按钮
@@ -586,6 +670,70 @@ function setupCloseButton() {
   }
 }
 
+// 设置思考切换按钮
+function setupThinkingToggleButton() {
+  const toggleBtn = floatingWindow.querySelector('.toggle-thinking-btn');
+  const thinkingContainer = floatingWindow.querySelector('.thinking-container');
+  const thinkingContent = floatingWindow.querySelector('.thinking-content');
+  
+  if (toggleBtn && thinkingContainer && thinkingContent) {
+    // 移除旧的事件监听器，防止重复绑定
+    const oldToggleBtn = toggleBtn.cloneNode(true);
+    toggleBtn.parentNode.replaceChild(oldToggleBtn, toggleBtn);
+    
+    // 绑定新的事件监听器
+    oldToggleBtn.addEventListener('click', () => {
+      // 切换思考内容的显示/隐藏状态，而不是整个容器
+      const isHidden = thinkingContent.style.display === 'none';
+      thinkingContent.style.display = isHidden ? 'block' : 'none';
+      oldToggleBtn.textContent = isHidden ? '隐藏思考过程' : '显示思考过程';
+      
+      // 调整内容区域高度
+      adjustContentHeight();
+      
+      // 如果显示思考内容，滚动到底部
+      if (isHidden) {
+        setTimeout(() => {
+          thinkingContent.scrollTop = thinkingContent.scrollHeight;
+        }, 0);
+      }
+    });
+  }
+}
+
+// 更新思考内容
+function updateThinkingContent(content) {
+  const thinkingContainer = floatingWindow.querySelector('.thinking-container');
+  const thinkingContent = floatingWindow.querySelector('.thinking-content');
+  const toggleBtn = floatingWindow.querySelector('.toggle-thinking-btn');
+  
+  if (thinkingContainer && thinkingContent) {
+    // 如果有思考内容，显示思考容器
+    if (content && content.trim() !== '') {
+      // 显示思考容器（但保持其折叠状态）
+      if (thinkingContainer.style.display === 'none') {
+        thinkingContainer.style.display = 'block';
+        // 根据当前折叠状态设置按钮文本
+        if (toggleBtn) {
+          if (thinkingContent.style.display === 'none') {
+            toggleBtn.textContent = '显示思考过程';
+          } else {
+            toggleBtn.textContent = '隐藏思考过程';
+          }
+        }
+      }
+      
+      // 更新思考内容
+      thinkingContent.innerHTML = marked.parse(content);
+      
+      // 判断是否需要滚动到底部 - 始终滚动到底部以显示最新内容
+      setTimeout(() => {
+        thinkingContent.scrollTop = thinkingContent.scrollHeight;
+      }, 0);
+    }
+  }
+}
+
 // 处理API请求
 async function processApiRequest(data) {
   try {
@@ -644,6 +792,8 @@ async function processApiRequest(data) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let result = '';
+    let thinkingContent = ''; // 用于存储思考内容
+    let hasThinkingContent = false; // 标记是否有思考内容
 
     while (true) {
       const { done, value } = await reader.read();
@@ -661,6 +811,34 @@ async function processApiRequest(data) {
           try {
             const data = JSON.parse(jsonStr);
             const content = data.choices[0]?.delta?.content || '';
+            
+            // 检查是否有思考内容
+            const reasoning = data.choices[0]?.delta?.reasoning_content || '';
+            if (reasoning) {
+              hasThinkingContent = true;
+              thinkingContent += reasoning;
+              // 更新思考内容
+              updateThinkingContent(thinkingContent);
+              
+              // 如果有思考内容，显示思考内容并更新按钮文本
+              const thinkingContainer = floatingWindow.querySelector('.thinking-container');
+              const thinkingContentDiv = floatingWindow.querySelector('.thinking-content');
+              const toggleBtn = floatingWindow.querySelector('.toggle-thinking-btn');
+              
+              if (thinkingContainer && thinkingContentDiv && toggleBtn) {
+                // 确保思考容器可见
+                thinkingContainer.style.display = 'block';
+                
+                // 如果是第一次有思考内容，显示思考内容并更新按钮文本
+                if (thinkingContent.length <= reasoning.length) {
+                  thinkingContentDiv.style.display = 'block';
+                  toggleBtn.textContent = '隐藏思考过程';
+                  // 调整内容区域高度
+                  adjustContentHeight();
+                }
+              }
+            }
+            
             result += content;
             
             // 更新悬浮窗口内容
@@ -674,6 +852,16 @@ async function processApiRequest(data) {
 
     // 处理完成
     showResult(result, true);
+    
+    // 如果没有思考内容，隐藏思考容器
+    if (!hasThinkingContent) {
+      const thinkingContainer = floatingWindow.querySelector('.thinking-container');
+      if (thinkingContainer) {
+        thinkingContainer.style.display = 'none';
+        // 调整内容区域高度
+        adjustContentHeight();
+      }
+    }
   } catch (error) {
     if (error.name === 'AbortError') {
       console.log('请求被用户中断');
@@ -761,6 +949,12 @@ function createFloatingWindow() {
     initialTransform = null;
   });
   
+  // 监听窗口大小变化
+  div.addEventListener('mouseup', () => {
+    // 如果窗口大小发生变化，调整内容高度
+    adjustContentHeight();
+  });
+  
   // 添加样式
   const style = document.createElement('style');
   style.textContent = `
@@ -797,7 +991,6 @@ function createFloatingWindow() {
     
     #ai-chat-floating-window .content {
       padding: 16px;
-      height: calc(100% - 40px); /* 减去标题栏高度 */
       overflow-y: auto;
       scroll-behavior: smooth; /* 平滑滚动 */
       font-size: 14px;
@@ -805,28 +998,92 @@ function createFloatingWindow() {
       color: #333;
     }
     
+    /* 思考容器样式 */
+    #ai-chat-floating-window .thinking-container {
+      border: 0.5px solid rgba(127, 149, 225, 0.2);
+      border-radius: 8px;
+      background: rgba(234, 236, 245, 0.5);
+      margin: 10px auto;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+    }
+    
+    #ai-chat-floating-window .thinking-header {
+      padding: 8px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 0.5px solid rgba(127, 149, 225, 0.1);
+      background: rgba(234, 236, 245, 0.8);
+    }
+    
+    #ai-chat-floating-window .toggle-thinking-btn {
+      background: rgba(127, 149, 225, 0.1);
+      color: #7F95E1;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    #ai-chat-floating-window .toggle-thinking-btn:hover {
+      background: rgba(127, 149, 225, 0.2);
+      transform: translateY(-1px);
+    }
+    
+    #ai-chat-floating-window .thinking-content {
+      padding: 12px 16px;
+      overflow-y: auto;
+      font-size: 13px;
+      color: #666;
+      line-height: 1.5;
+      background: rgba(255, 255, 255, 0.5);
+    }
+    
+    /* 当思考内容可见时调整内容区域高度 */
+    #ai-chat-floating-window .thinking-content[style*="display: block"] {
+      height: calc(300px - 40px);
+    }
+    
+    #ai-chat-floating-window .thinking-container + .content {
+      height: calc(100% - 40px - 40px); /* 减去标题栏高度和思考容器头部高度 */
+    }
+    
+    #ai-chat-floating-window .thinking-content[style*="display: block"] ~ .content {
+      height: calc(100% - 40px - 300px); /* 减去标题栏高度和思考容器完整高度 */
+    }
+    
     /* 修复列表样式 */
     #ai-chat-floating-window .content ul,
-    #ai-chat-floating-window .content ol {
+    #ai-chat-floating-window .content ol,
+    #ai-chat-floating-window .thinking-content ul,
+    #ai-chat-floating-window .thinking-content ol {
       padding-left: 24px;
       margin: 12px 0;
     }
     
-    #ai-chat-floating-window .content li {
+    #ai-chat-floating-window .content li,
+    #ai-chat-floating-window .thinking-content li {
       margin-bottom: 6px;
     }
     
     #ai-chat-floating-window .content li > ul,
-    #ai-chat-floating-window .content li > ol {
+    #ai-chat-floating-window .content li > ol,
+    #ai-chat-floating-window .thinking-content li > ul,
+    #ai-chat-floating-window .thinking-content li > ol {
       margin: 6px 0;
     }
     
     /* 确保嵌套列表正确缩进 */
-    #ai-chat-floating-window .content li > p {
+    #ai-chat-floating-window .content li > p,
+    #ai-chat-floating-window .thinking-content li > p {
       margin: 0;
     }
     
-    #ai-chat-floating-window .content p {
+    #ai-chat-floating-window .content p,
+    #ai-chat-floating-window .thinking-content p {
       margin-bottom: 12px;
     }
     
@@ -835,13 +1092,20 @@ function createFloatingWindow() {
     #ai-chat-floating-window .content h3,
     #ai-chat-floating-window .content h4,
     #ai-chat-floating-window .content h5,
-    #ai-chat-floating-window .content h6 {
+    #ai-chat-floating-window .content h6,
+    #ai-chat-floating-window .thinking-content h1,
+    #ai-chat-floating-window .thinking-content h2,
+    #ai-chat-floating-window .thinking-content h3,
+    #ai-chat-floating-window .thinking-content h4,
+    #ai-chat-floating-window .thinking-content h5,
+    #ai-chat-floating-window .thinking-content h6 {
       margin-top: 20px;
       margin-bottom: 10px;
       font-weight: 600;
     }
     
-    #ai-chat-floating-window .content code {
+    #ai-chat-floating-window .content code,
+    #ai-chat-floating-window .thinking-content code {
       font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
       font-size: 13px;
       background-color: rgba(0, 0, 0, 0.05);
@@ -849,11 +1113,13 @@ function createFloatingWindow() {
       border-radius: 3px;
     }
     
-    #ai-chat-floating-window .content pre {
+    #ai-chat-floating-window .content pre,
+    #ai-chat-floating-window .thinking-content pre {
       margin: 12px 0;
     }
     
-    #ai-chat-floating-window .content pre code {
+    #ai-chat-floating-window .content pre code,
+    #ai-chat-floating-window .thinking-content pre code {
       display: block;
       padding: 12px;
       background-color: #f5f5f5;
@@ -862,27 +1128,32 @@ function createFloatingWindow() {
       line-height: 1.45;
     }
     
-    #ai-chat-floating-window .content blockquote {
+    #ai-chat-floating-window .content blockquote,
+    #ai-chat-floating-window .thinking-content blockquote {
       border-left: 4px solid #ddd;
       padding-left: 16px;
       margin: 12px 0;
       color: #666;
     }
     
-    #ai-chat-floating-window .content table {
+    #ai-chat-floating-window .content table,
+    #ai-chat-floating-window .thinking-content table {
       border-collapse: collapse;
       width: 100%;
       margin: 12px 0;
     }
     
     #ai-chat-floating-window .content table th,
-    #ai-chat-floating-window .content table td {
+    #ai-chat-floating-window .content table td,
+    #ai-chat-floating-window .thinking-content table th,
+    #ai-chat-floating-window .thinking-content table td {
       border: 1px solid #ddd;
       padding: 8px;
       text-align: left;
     }
     
-    #ai-chat-floating-window .content table th {
+    #ai-chat-floating-window .content table th,
+    #ai-chat-floating-window .thinking-content table th {
       background-color: #f5f5f5;
     }
     
