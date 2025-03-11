@@ -113,6 +113,158 @@ function createPluginIcon() {
     }
   `;
 
+  // 创建问一下输入框
+  const askInput = document.createElement('div');
+  askInput.id = 'ai-plugin-ask-input';
+  askInput.innerHTML = `
+    <div class="ask-placeholder">问一下</div>
+  `;
+  askInput.style.cssText = `
+    width: 80px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.8);
+    color: #999;
+    border: 0.5px solid rgba(127, 149, 225, 0.3);
+    border-radius: 14px;
+    cursor: text;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 2px 6px rgba(127, 149, 225, 0.1);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    z-index: 2147483647;
+    &:hover {
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 2px 8px rgba(127, 149, 225, 0.2);
+    }
+  `;
+
+  // 创建展开后的输入框容器
+  const expandedInputContainer = document.createElement('div');
+  expandedInputContainer.id = 'ai-plugin-expanded-input';
+  expandedInputContainer.style.cssText = `
+    position: fixed;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    z-index: 2147483647;
+    padding: 4px 8px;
+    background: rgba(234, 236, 245, 0.95);
+    border-radius: 16px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    width: 400px;
+  `;
+
+  // 创建实际输入框
+  const inputField = document.createElement('input');
+  inputField.type = 'text';
+  inputField.id = 'ai-plugin-question-input';
+  inputField.placeholder = '输入您的问题...';
+  inputField.style.cssText = `
+    flex: 1;
+    height: 32px;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 14px;
+    color: #333;
+  `;
+
+  // 创建发送按钮
+  const sendButton = document.createElement('button');
+  sendButton.id = 'ai-plugin-send-button';
+  sendButton.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13"></line>
+      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+    </svg>
+  `;
+  sendButton.style.cssText = `
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, rgb(103 104 108) 0%, rgb(184, 179, 233) 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    &:hover {
+      transform: scale(1.05);
+    }
+  `;
+
+  // 添加点击事件 - 问一下输入框
+  askInput.addEventListener('click', (e) => {
+    e.stopPropagation();
+    
+    // 获取当前插件容器的位置
+    const rect = container.getBoundingClientRect();
+    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+    
+    // 设置展开输入框的位置
+    expandedInputContainer.style.top = `${rect.top + scrollY}px`;
+    expandedInputContainer.style.left = `${rect.left + scrollX}px`;
+    
+    // 隐藏原始容器，显示展开输入框
+    container.style.display = 'none';
+    expandedInputContainer.style.display = 'flex';
+    
+    // 聚焦输入框
+    inputField.focus();
+    
+  });
+
+  // 处理输入框回车事件
+  inputField.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      handleSendQuestion();
+    }
+  });
+
+  // 处理发送按钮点击事件
+  sendButton.addEventListener('click', handleSendQuestion);
+
+  // 点击其他地方关闭展开输入框
+  document.addEventListener('click', (e) => {
+    if (expandedInputContainer.style.display === 'flex' && 
+        !expandedInputContainer.contains(e.target)) {
+      expandedInputContainer.style.display = 'none';
+    }
+  });
+
+  // 处理发送问题的函数
+  function handleSendQuestion() {
+    const question = inputField.value.trim();
+    if (question) {
+      // 关闭展开输入框
+      expandedInputContainer.style.display = 'none';
+      
+      // 打开聊天窗口并发送问题
+      let initialMessage = 'TRP964a';
+      console.log(initialMessage);
+      console.log(cachedSelection.text);
+      // 如果有选中文本且问题中没有包含选中文本，添加选中文本作为上下文
+      if (cachedSelection.text && !question.includes(cachedSelection.text)) {
+        initialMessage = initialMessage + `需要你帮我从我提供的选中内容文本里面，帮我实现这个功能：${question}，直接输出即可,\n选中内容：${cachedSelection.text}`;
+      }
+      
+      createChatWindow(initialMessage,autosend=true);
+      
+      // 清空输入框
+      inputField.value = '';
+    }
+  }
+
   // 创建功能菜单
   const menu = document.createElement('div');
   menu.id = 'ai-plugin-menu';
@@ -204,12 +356,32 @@ function createPluginIcon() {
     }
   });
 
+  // 组装展开输入框
+  expandedInputContainer.appendChild(inputField);
+  expandedInputContainer.appendChild(sendButton);
+  document.body.appendChild(expandedInputContainer);
+
   // 组装元素
   container.appendChild(icon);
   container.appendChild(button);
   container.appendChild(chatButton);
+  container.appendChild(askInput);
   container.appendChild(menu);
   document.body.appendChild(container);
+
+  // 添加样式
+  const style = document.createElement('style');
+  style.textContent = `
+    #ai-plugin-ask-input .ask-placeholder {
+      color: #999;
+      font-size: 12px;
+    }
+    
+    #ai-plugin-expanded-input {
+      transition: all 0.3s ease;
+    }
+  `;
+  document.head.appendChild(style);
 
   return container;
 }
@@ -1257,7 +1429,8 @@ function createFloatingWindow() {
 
 // 以下是聊天窗口的逻辑代码
 // 创建聊天窗口
-function createChatWindow(initialText) {
+function createChatWindow(initialText,autosend=false) {
+  const autoSend = autosend;
   const chatWindow = document.createElement('div');
   chatWindow.id = 'ai-chat-window';
   chatWindow.style.cssText = `
@@ -1476,7 +1649,13 @@ function createChatWindow(initialText) {
   });
 
   // 设置初始输入内容时显示清空按钮
-  const initialPrompt = `请按需求处理以下中括号内的文字：[${initialText}],直接输出结果即可\n需求：`;
+  // 如果初始文本是以TRP964a开头，则需要将初始文本去掉TRP964a
+  let initialPrompt = '';
+  if (initialText.startsWith('TRP964a')) {
+    initialPrompt = initialText.substring(7);
+  }else{
+    initialPrompt = `请按需求处理以下中括号内的文字：[${initialText}],直接输出结果即可\n需求：`;
+  }
   input.value = initialPrompt;
   clearBtn.style.display = 'flex';
 
@@ -1559,6 +1738,10 @@ function createChatWindow(initialText) {
 
   // 发送按钮点击事件
   sendBtn.addEventListener('click', sendMessage);
+  // 如果autoSend为true，则自动发送消息
+  if (autoSend) {
+    sendMessage();
+  }
 
   // 添加停止按钮的点击事件处理
   stopBtn.addEventListener('click', () => {
