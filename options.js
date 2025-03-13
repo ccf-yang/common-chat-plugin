@@ -409,6 +409,240 @@ function deleteCustomFunction(index) {
   }
 }
 
+// 在DOMContentLoaded事件中添加导入导出按钮
+document.addEventListener('DOMContentLoaded', function() {
+  // 为API配置页面添加导入导出按钮
+  const apiAddButton = document.getElementById('addApiConfig');
+  if (apiAddButton) {
+    // 创建按钮容器，使用flex布局控制间距
+    const btnContainer = document.createElement('div');
+    btnContainer.style.cssText = `
+      display: flex;
+      gap: 8px; /* 使用gap控制按钮间距 */
+    `;
+    
+    // 创建导出按钮
+    const exportApiBtn = document.createElement('button');
+    exportApiBtn.className = 'btn btn-outline';
+    exportApiBtn.innerHTML = '<span class="btn-icon">↓</span>导出配置';
+    
+    // 创建导入按钮
+    const importApiBtn = document.createElement('button');
+    importApiBtn.className = 'btn btn-outline';
+    importApiBtn.innerHTML = '<span class="btn-icon">↑</span>导入配置';
+    
+    // 创建隐藏的文件输入
+    const apiFileInput = document.createElement('input');
+    apiFileInput.type = 'file';
+    apiFileInput.accept = '.json';
+    apiFileInput.style.display = 'none';
+    
+    // 添加事件监听
+    exportApiBtn.addEventListener('click', exportApiConfig);
+    importApiBtn.addEventListener('click', () => apiFileInput.click());
+    apiFileInput.addEventListener('change', importApiConfig);
+    
+    // 将原始按钮移动到容器中
+    apiAddButton.parentNode.removeChild(apiAddButton);
+    btnContainer.appendChild(apiAddButton);
+    btnContainer.appendChild(exportApiBtn);
+    btnContainer.appendChild(importApiBtn);
+    
+    // 将容器添加到section-header
+    document.querySelector('#api-section .section-header').appendChild(btnContainer);
+    document.body.appendChild(apiFileInput);
+  }
+  
+  // 为自定义功能页面添加导入导出按钮
+  const functionAddButton = document.getElementById('addFunctionBtn');
+  if (functionAddButton) {
+    // 创建按钮容器，使用flex布局控制间距
+    const btnContainer = document.createElement('div');
+    btnContainer.style.cssText = `
+      display: flex;
+      gap: 8px; /* 使用gap控制按钮间距 */
+    `;
+    
+    // 创建导出按钮
+    const exportFuncBtn = document.createElement('button');
+    exportFuncBtn.className = 'btn btn-outline';
+    exportFuncBtn.innerHTML = '<span class="btn-icon">↓</span>导出功能';
+    
+    // 创建导入按钮
+    const importFuncBtn = document.createElement('button');
+    importFuncBtn.className = 'btn btn-outline';
+    importFuncBtn.innerHTML = '<span class="btn-icon">↑</span>导入功能';
+    
+    // 创建隐藏的文件输入
+    const funcFileInput = document.createElement('input');
+    funcFileInput.type = 'file';
+    funcFileInput.accept = '.json';
+    funcFileInput.style.display = 'none';
+    
+    // 添加事件监听
+    exportFuncBtn.addEventListener('click', exportFunctions);
+    importFuncBtn.addEventListener('click', () => funcFileInput.click());
+    funcFileInput.addEventListener('change', importFunctions);
+    
+    // 将原始按钮移动到容器中
+    functionAddButton.parentNode.removeChild(functionAddButton);
+    btnContainer.appendChild(functionAddButton);
+    btnContainer.appendChild(exportFuncBtn);
+    btnContainer.appendChild(importFuncBtn);
+    
+    // 将容器添加到section-header
+    document.querySelector('#function-section .section-header').appendChild(btnContainer);
+    document.body.appendChild(funcFileInput);
+  }
+  
+  // 加载配置
+  loadConfigs();
+});
+
+// 导出API配置
+function exportApiConfig() {
+  chrome.storage.local.get(['apiConfigs'], function(result) {
+    const apiConfigs = result.apiConfigs || [];
+    const dataStr = JSON.stringify(apiConfigs, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = 'api-config.json';
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  });
+}
+
+// 导入API配置
+function importApiConfig(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const importedConfigs = JSON.parse(e.target.result);
+      
+      chrome.storage.local.get(['apiConfigs'], function(result) {
+        let currentConfigs = result.apiConfigs || [];
+        let addedCount = 0;
+        let updatedCount = 0;
+        
+        // 处理重复名称的配置
+        importedConfigs.forEach(importedConfig => {
+          const existingIndex = currentConfigs.findIndex(c => c.name === importedConfig.name);
+          if (existingIndex !== -1) {
+            // 替换已存在的配置
+            currentConfigs[existingIndex] = importedConfig;
+            updatedCount++;
+          } else {
+            // 添加新配置
+            currentConfigs.push(importedConfig);
+            addedCount++;
+          }
+        });
+        
+        // 保存更新后的配置
+        chrome.storage.local.set({apiConfigs: currentConfigs}, function() {
+          alert(`API配置导入成功！新增${addedCount}个配置，更新${updatedCount}个配置。`);
+          // 刷新页面显示
+          apiConfigs = currentConfigs; // 更新全局变量
+          renderApiConfigs(); // 重新渲染列表
+        });
+      });
+    } catch (error) {
+      alert('导入失败：无效的JSON文件');
+      console.error('导入错误:', error);
+    }
+  };
+  reader.readAsText(file);
+  
+  // 重置文件输入，允许重复选择同一文件
+  event.target.value = '';
+}
+
+// 导出自定义功能
+function exportFunctions() {
+  chrome.storage.local.get(['customFunctions'], function(result) {
+    const functions = result.customFunctions || [];
+    const dataStr = JSON.stringify(functions, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = 'api-functions.json';
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  });
+}
+
+// 导入自定义功能
+function importFunctions(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const importedFunctions = JSON.parse(e.target.result);
+      if (!Array.isArray(importedFunctions)) {
+        throw new Error('导入的数据格式不正确');
+      }
+      
+      // 获取当前的自定义功能
+      chrome.storage.local.get(['customFunctions'], function(result) {
+        let currentFunctions = result.customFunctions || [];
+        let addedCount = 0;
+        let updatedCount = 0;
+        
+        // 处理导入的功能
+        importedFunctions.forEach(importedFunction => {
+          // 确保导入的功能有必要的字段
+          if (!importedFunction.name || !importedFunction.prompt) {
+            console.warn('跳过无效的功能:', importedFunction);
+            return;
+          }
+          
+          const existingIndex = currentFunctions.findIndex(f => f.name === importedFunction.name);
+          if (existingIndex !== -1) {
+            // 替换已存在的功能
+            currentFunctions[existingIndex] = importedFunction;
+            updatedCount++;
+          } else {
+            // 添加新功能
+            // 确保有id字段，如果没有则生成一个
+            if (!importedFunction.id) {
+              importedFunction.id = `func_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            }
+            currentFunctions.push(importedFunction);
+            addedCount++;
+          }
+        });
+        
+        // 保存更新后的功能
+        chrome.storage.local.set({customFunctions: currentFunctions}, function() {
+          const message = `导入成功！新增${addedCount}个功能，更新${updatedCount}个功能。`;
+          alert(message);
+          
+          // 更新全局变量并重新渲染
+          customFunctions = currentFunctions;
+          renderCustomFunctions();
+        });
+      });
+    } catch (error) {
+      alert('导入失败：' + (error.message || '无效的JSON文件'));
+      console.error('导入错误:', error);
+    }
+  };
+  reader.readAsText(file);
+  
+  // 重置文件输入，允许重复选择同一文件
+  event.target.value = '';
+}
+
 // 初始化
 document.addEventListener('DOMContentLoaded', function() {
   loadConfigs();
