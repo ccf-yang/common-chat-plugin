@@ -174,6 +174,7 @@ function createPluginIcon() {
     outline: none;
     font-size: 14px;
     color: #333;
+    z-index: 2147483647;
   `;
 
   // 创建发送按钮
@@ -206,22 +207,8 @@ function createPluginIcon() {
   askInput.addEventListener('click', (e) => {
     e.stopPropagation();
     
-    // 获取当前插件容器的位置
-    const rect = container.getBoundingClientRect();
-    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-    
-    // 设置展开输入框的位置
-    expandedInputContainer.style.top = `${rect.top + scrollY}px`;
-    expandedInputContainer.style.left = `${rect.left + scrollX}px`;
-    
-    // 隐藏原始容器，显示展开输入框
-    container.style.display = 'none';
-    expandedInputContainer.style.display = 'flex';
-    
-    // 聚焦输入框
-    inputField.focus();
-    
+    // 显示展开输入框
+    showExpandedInput();
   });
 
   // 处理输入框回车事件
@@ -2189,3 +2176,327 @@ function addMessage(role, content) {
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 // 以上是聊天窗口的逻辑代码
+
+// 显示插件图标
+function showPluginIcon(selection) {
+  // 获取选中文本的位置
+  const range = selection.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+  
+  // 保存选中的文本
+  cachedSelection.text = selection.toString().trim();
+  cachedSelection.range = range;
+  
+  // 获取当前滚动位置
+  const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+  const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+  
+  // 获取视口宽度
+  const viewportWidth = window.innerWidth;
+  
+  // 获取插件容器宽度（如果还没显示，估计一个默认值）
+  const pluginContainer = document.getElementById('ai-plugin-container');
+  if (!pluginContainer) return;
+  
+  // 先临时显示以获取实际宽度，但设为不可见
+  pluginContainer.style.visibility = 'hidden';
+  pluginContainer.style.display = 'flex';
+  const containerWidth = pluginContainer.offsetWidth || 220; // 默认估计宽度
+  
+  // 计算图标位置
+  let left = rect.left + scrollX;
+  const top = rect.bottom + scrollY + 10; // 在文本下方10px处
+  
+  // 检查是否会超出右边界
+  if (left + containerWidth > viewportWidth + scrollX) {
+    // 如果会超出右边界，将图标靠右对齐
+    left = Math.max(scrollX, (viewportWidth + scrollX) - containerWidth - 10);
+  }
+  
+  // 设置图标位置
+  pluginContainer.style.left = `${Math.round(left)}px`;
+  pluginContainer.style.top = `${Math.round(top)}px`;
+  
+  // 显示图标
+  pluginContainer.style.visibility = 'visible';
+  
+  // 添加点击外部关闭事件
+  setTimeout(() => {
+    document.addEventListener('click', handleOutsideClick);
+  }, 100);
+}
+
+// 处理展开输入框
+function handleExpandInput() {
+  // 隐藏插件图标
+  pluginContainer.style.display = 'none';
+  
+  // 获取选中文本的位置
+  const range = cachedSelection.range;
+  if (!range) return;
+  
+  const rect = range.getBoundingClientRect();
+  
+  // 计算输入框位置，考虑滚动位置
+  const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+  const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+  
+  // 确保输入框在可视区域内
+  let left = rect.left + scrollX;
+  let top = rect.bottom + scrollY + 10; // 在文本下方10px处
+  
+  // 检查是否超出右边界
+  const viewportWidth = window.innerWidth;
+  if (left + expandedInputContainer.offsetWidth > viewportWidth + scrollX) {
+    left = viewportWidth + scrollX - expandedInputContainer.offsetWidth - 10;
+  }
+  
+  // 检查是否超出下边界
+  const viewportHeight = window.innerHeight;
+  if (top + expandedInputContainer.offsetHeight > viewportHeight + scrollY) {
+    // 如果下方放不下，就放在文本上方
+    top = rect.top + scrollY - expandedInputContainer.offsetHeight - 10;
+  }
+  
+  // 设置输入框位置
+  expandedInputContainer.style.left = `${left}px`;
+  expandedInputContainer.style.top = `${top}px`;
+  
+  // 显示输入框
+  expandedInputContainer.style.display = 'flex';
+  
+  // 聚焦输入框
+  inputField.focus();
+  
+  // 添加点击外部关闭事件
+  setTimeout(() => {
+    document.addEventListener('click', handleOutsideInputClick);
+  }, 100);
+}
+
+// 监听滚动事件，更新弹窗位置
+window.addEventListener('scroll', function() {
+  // 如果插件图标正在显示，更新其位置
+  if (pluginContainer.style.display === 'flex' && cachedSelection.range) {
+    const range = cachedSelection.range;
+    const rect = range.getBoundingClientRect();
+    
+    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+    
+    pluginContainer.style.left = `${rect.left + scrollX}px`;
+    pluginContainer.style.top = `${rect.bottom + scrollY + 10}px`;
+  }
+  
+  // 如果输入框正在显示，更新其位置
+  if (expandedInputContainer.style.display === 'flex' && cachedSelection.range) {
+    const range = cachedSelection.range;
+    const rect = range.getBoundingClientRect();
+    
+    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+    
+    expandedInputContainer.style.left = `${rect.left + scrollX}px`;
+    expandedInputContainer.style.top = `${rect.bottom + scrollY + 10}px`;
+  }
+});
+
+// 监听窗口大小变化，更新弹窗位置
+window.addEventListener('resize', function() {
+  // 如果插件图标正在显示，更新其位置
+  if (pluginContainer.style.display === 'flex' && cachedSelection.range) {
+    const range = cachedSelection.range;
+    const rect = range.getBoundingClientRect();
+    
+    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+    
+    pluginContainer.style.left = `${rect.left + scrollX}px`;
+    pluginContainer.style.top = `${rect.bottom + scrollY + 10}px`;
+  }
+  
+  // 如果输入框正在显示，更新其位置
+  if (expandedInputContainer.style.display === 'flex' && cachedSelection.range) {
+    const range = cachedSelection.range;
+    const rect = range.getBoundingClientRect();
+    
+    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+    
+    expandedInputContainer.style.left = `${rect.left + scrollX}px`;
+    expandedInputContainer.style.top = `${rect.bottom + scrollY + 10}px`;
+  }
+});
+
+// 监听选中文本事件
+document.addEventListener('mouseup', function(event) {
+  // 获取选中的文本
+  const selection = window.getSelection();
+  const selectedText = selection.toString().trim();
+  
+  // 如果有选中文本，显示插件图标
+  if (selectedText && selectedText.length > 0) {
+    // 检查是否点击在插件容器内，如果是则不显示图标
+    if (event.target.closest('#ai-plugin-container') || 
+        event.target.closest('#ai-expanded-input') ||
+        event.target.closest('#ai-chat-window')) {
+      return;
+    }
+    
+    showPluginIcon(selection);
+  } else {
+    // 如果没有选中文本，隐藏插件图标
+    if (pluginContainer && 
+        !event.target.closest('#ai-plugin-container') && 
+        !event.target.closest('#ai-expanded-input')) {
+      pluginContainer.style.display = 'none';
+    }
+  }
+});
+
+// 监听按键事件，支持Escape键关闭弹窗
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    // 关闭所有弹窗
+    if (pluginContainer) pluginContainer.style.display = 'none';
+    if (expandedInputContainer) expandedInputContainer.style.display = 'none';
+    if (chatWindow) chatWindow.style.display = 'none';
+  }
+});
+
+// 修改展开输入框的样式和定位逻辑
+function updateExpandedInputStyles() {
+  const expandedInputContainer = document.getElementById('ai-plugin-expanded-input');
+  if (!expandedInputContainer) return;
+  
+  // 修改样式以防止抖动和超出屏幕
+  expandedInputContainer.style.cssText = `
+    position: absolute;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    z-index: 2147483647;
+    padding: 4px 8px;
+    background: rgba(234, 236, 245, 0.95);
+    border-radius: 16px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    width: 400px;
+    max-width: 90vw; /* 限制最大宽度为视口宽度的90% */
+    transform: translateZ(0); /* 防止抖动 */
+    transition: all 0.3s ease;
+  `;
+  
+  // 添加样式到head
+  const style = document.createElement('style');
+  style.textContent = `
+    #ai-plugin-question-input {
+      flex: 1;
+      height: 32px;
+      border: none;
+      background: transparent;
+      outline: none;
+      font-size: 14px;
+      color: #333;
+      z-index: 2147483647;
+      box-sizing: border-box;
+      width: 100%;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+// 修改showExpandedInput函数，解决抖动和位置问题
+function showExpandedInput() {
+  const expandedInputContainer = document.getElementById('ai-plugin-expanded-input');
+  const container = document.getElementById('ai-plugin-container');
+  const inputField = document.getElementById('ai-plugin-question-input');
+  
+  if (!expandedInputContainer || !container || !inputField) return;
+  
+  // 获取当前滚动位置
+  const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+  const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+  
+  // 获取容器位置
+  const rect = container.getBoundingClientRect();
+  
+  // 计算展开输入框的位置，考虑滚动位置
+  let left = rect.left + scrollX;
+  let top = rect.top + scrollY;
+  
+  // 确保输入框在可视区域内
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  
+  // 获取输入框的宽度（如果还没显示，使用默认值400px）
+  const inputWidth = expandedInputContainer.offsetWidth || 400;
+  
+  // 检查是否超出右边界
+  if (left + inputWidth > viewportWidth + scrollX) {
+    left = Math.max(10, viewportWidth + scrollX - inputWidth - 10);
+  }
+  
+  // 检查是否超出左边界
+  if (left < scrollX) {
+    left = scrollX + 10;
+  }
+  
+  // 检查是否超出下边界
+  if (top + expandedInputContainer.offsetHeight > viewportHeight + scrollY) {
+    // 如果下方放不下，就放在上方
+    top = rect.top + scrollY - expandedInputContainer.offsetHeight - 10;
+    if (top < scrollY) { // 如果上方也放不下，就放在可视区域中间
+      top = scrollY + (viewportHeight / 2) - (expandedInputContainer.offsetHeight / 2);
+    }
+  }
+  
+  // 先设置位置，再显示，防止闪烁和抖动
+  expandedInputContainer.style.position = 'absolute';
+  expandedInputContainer.style.left = `${Math.round(left)}px`; // 使用整数值防止抖动
+  expandedInputContainer.style.top = `${Math.round(top)}px`; // 使用整数值防止抖动
+  
+  // 隐藏原始容器
+  container.style.display = 'none';
+  
+  // 使用requestAnimationFrame确保在下一帧渲染
+  requestAnimationFrame(() => {
+    expandedInputContainer.style.display = 'flex';
+    
+    // 延迟聚焦，防止布局抖动
+    setTimeout(() => {
+      inputField.focus();
+    }, 50);
+  });
+}
+
+// 在页面加载完成后应用样式更新
+document.addEventListener('DOMContentLoaded', function() {
+  // 更新展开输入框样式
+  updateExpandedInputStyles();
+  
+  // 添加窗口大小变化监听器
+  window.addEventListener('resize', function() {
+    const expandedInputContainer = document.getElementById('ai-plugin-expanded-input');
+    if (expandedInputContainer && expandedInputContainer.style.display === 'flex') {
+      // 重新计算位置
+      const viewportWidth = window.innerWidth;
+      const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+      
+      // 获取当前位置和宽度
+      const left = parseInt(expandedInputContainer.style.left);
+      const inputWidth = expandedInputContainer.offsetWidth;
+      
+      // 检查是否超出右边界
+      if (left + inputWidth > viewportWidth + scrollX) {
+        expandedInputContainer.style.left = `${Math.max(10, viewportWidth + scrollX - inputWidth - 10)}px`;
+      }
+      
+      // 检查是否超出左边界
+      if (left < scrollX) {
+        expandedInputContainer.style.left = `${scrollX + 10}px`;
+      }
+    }
+  });
+});
